@@ -1,9 +1,9 @@
 // src/app/api/steamspy/[appId]/route.ts
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { fetchSteamSpyData, parseOwners, parseTags } from '@/lib/api/steamspy';
 
 export async function GET(
-  request: NextRequest,
+  _request: Request,
   { params }: { params: Promise<{ appId: string }> }
 ) {
   try {

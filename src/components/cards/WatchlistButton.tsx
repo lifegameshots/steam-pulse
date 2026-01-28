@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Star, StarOff, Loader2 } from 'lucide-react';
+import { Star, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { cn } from '@/lib/utils';
@@ -59,18 +59,16 @@ export function WatchlistButton({
         className={cn(
           'h-9 w-9 transition-all duration-200',
           isInList 
-            ? 'text-yellow-500 hover:text-yellow-600 hover:bg-yellow-500/10' 
-            : 'text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10',
+            ? 'text-yellow-500 hover:text-yellow-600 bg-yellow-500/20 hover:bg-yellow-500/30' 
+            : 'text-white hover:text-yellow-400 bg-white/20 hover:bg-white/30',
           className
         )}
         title={isInList ? 'Remove from Watchlist' : 'Add to Watchlist'}
       >
         {loading ? (
           <Loader2 className="h-5 w-5 animate-spin" />
-        ) : isInList ? (
-          <Star className="h-5 w-5 fill-current" />
         ) : (
-          <StarOff className="h-5 w-5" />
+          <Star className={cn('h-5 w-5', isInList && 'fill-current')} />
         )}
       </Button>
     );
@@ -80,43 +78,41 @@ export function WatchlistButton({
   if (variant === 'compact') {
     return (
       <Button
-        variant={isInList ? 'default' : 'outline'}
+        variant="default"
         size="sm"
         onClick={handleClick}
         disabled={loading}
         className={cn(
           'gap-1.5 transition-all duration-200',
           isInList 
-            ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' 
-            : 'border-yellow-500/50 text-yellow-600 hover:bg-yellow-500/10 hover:border-yellow-500',
+            ? 'bg-yellow-500 hover:bg-yellow-600 text-white' 
+            : 'bg-blue-500 hover:bg-blue-600 text-white',
           className
         )}
       >
         {loading ? (
           <Loader2 className="h-4 w-4 animate-spin" />
-        ) : isInList ? (
-          <Star className="h-4 w-4 fill-current" />
         ) : (
-          <StarOff className="h-4 w-4" />
+          <Star className={cn('h-4 w-4', isInList && 'fill-current')} />
         )}
-        <span className="hidden sm:inline">
+        <span>
           {isInList ? 'Watching' : 'Watch'}
         </span>
       </Button>
     );
   }
 
-  // 기본 버전 (큰 버튼)
+  // 기본 버전 (큰 버튼) - 활성화된 스타일
   return (
     <Button
-      variant={isInList ? 'default' : 'outline'}
+      variant="default"
       onClick={handleClick}
       disabled={loading}
       className={cn(
-        'gap-2 min-w-[140px] transition-all duration-200',
+        'gap-2 min-w-[160px] transition-all duration-200 font-medium',
         isInList 
-          ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' 
-          : 'border-yellow-500 text-yellow-600 hover:bg-yellow-500/10 hover:text-yellow-700',
+          ? 'bg-yellow-500 hover:bg-yellow-600 text-white' 
+          : 'bg-blue-500 hover:bg-blue-600 text-white',
         className
       )}
     >
@@ -132,7 +128,7 @@ export function WatchlistButton({
         </>
       ) : (
         <>
-          <StarOff className="h-4 w-4" />
+          <Star className="h-4 w-4" />
           <span>Add to Watchlist</span>
         </>
       )}
