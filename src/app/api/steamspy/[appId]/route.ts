@@ -1,6 +1,4 @@
-// src/app/api/steamspy/[appId]/route.ts
 import { NextResponse } from 'next/server';
-import { fetchSteamSpyData, parseOwners, parseTags } from '@/lib/api/steamspy';
 
 export async function GET(
   _request: Request,
@@ -17,24 +15,28 @@ export async function GET(
       );
     }
     
-    const data = await fetchSteamSpyData(appId);
+    const response = await fetch(
+      `https://steamspy.com/api.php?request=appdetails&appid=${appId}`,
+      { next: { revalidate: 3600 } }
+    );
     
-    if (!data) {
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: 'Failed to fetch from SteamSpy' },
+        { status: response.status }
+      );
+    }
+    
+    const data = await response.json();
+    
+    if (!data || data.name === undefined) {
       return NextResponse.json(
         { error: 'Game not found on SteamSpy' },
         { status: 404 }
       );
     }
     
-    // 파싱된 데이터 추가
-    const owners = parseOwners(data.owners);
-    const tags = parseTags(data.tags);
-    
-    return NextResponse.json({
-      ...data,
-      owners_parsed: owners,
-      tags_array: tags,
-    });
+    return NextResponse.json(data);
   } catch (error) {
     console.error('SteamSpy API route error:', error);
     return NextResponse.json(
