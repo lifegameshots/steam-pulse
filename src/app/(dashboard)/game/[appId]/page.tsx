@@ -1,365 +1,614 @@
+// src/app/(dashboard)/game/[appId]/page.tsx
 'use client';
 
-import { use, useMemo } from 'react';
+import { useParams } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import Image from 'next/image';
+import Link from 'next/link';
+import { 
+  ArrowLeft, 
+  Users, 
+  Star, 
+  DollarSign, 
+  Calendar,
+  TrendingUp,
+  MessageSquare,
+  Clock,
+  Building2,
+  Tag,
+  ExternalLink,
+  BarChart3,
+  Gamepad2
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Users, Star, DollarSign, Calendar, Building2, 
-  Tag, ExternalLink, TrendingUp, BarChart3
-} from 'lucide-react';
-import { useAppDetails } from '@/hooks/useSteamData';
-import { calculateBoxleiter } from '@/lib/algorithms/boxleiter';
-import { formatNumber, formatCurrency } from '@/lib/utils/formatters';
-import { CCUChart } from '@/components/charts/CCUChart';
 import { WatchlistButton } from '@/components/cards/WatchlistButton';
-import { InsightCard } from '@/components/cards/InsightCard';
-import Link from 'next/link';
+import { CCUChart } from '@/components/charts/CCUChart';
+import { formatNumber, formatCurrency } from '@/lib/utils/formatters';
+import { calculateBoxleiter, formatCurrency as formatBoxleiterCurrency } from '@/lib/algorithms/boxleiter';
 
-// 모의 CCU 데이터 생성
-function generateMockCCUData() {
-  const now = new Date();
-  const data = [];
-  for (let i = 23; i >= 0; i--) {
-    const time = new Date(now.getTime() - i * 60 * 60 * 1000);
-    data.push({
-      time: time.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-      ccu: Math.floor(10000 + Math.random() * 50000),
-    });
-  }
-  return data;
+// Steam API 데이터 타입
+interface SteamAppData {
+  steam_appid: number;
+  name: string;
+  type: string;
+  is_free: boolean;
+  detailed_description: string;
+  short_description: string;
+  header_image: string;
+  website: string;
+  developers: string[];
+  publishers: string[];
+  price_overview?: {
+    currency: string;
+    initial: number;
+    final: number;
+    discount_percent: number;
+    final_formatted: string;
+  };
+  release_date: {
+    coming_soon: boolean;
+    date: string;
+  };
+  genres?: { id: string; description: string }[];
+  categories?: { id: number; description: string }[];
+  metacritic?: { score: number; url: string };
+  recommendations?: { total: number };
+  achievements?: { total: number };
+  platforms: { windows: boolean; mac: boolean; linux: boolean };
 }
 
-export default function GamePage({ params }: { params: Promise<{ appId: string }> }) {
-  const { appId } = use(params);
-  const { data: game, isLoading: loadingGame, error: gameError } = useAppDetails(appId);
+// SteamSpy 데이터 타입
+interface SteamSpyData {
+  appid: number;
+  name: string;
+  developer: string;
+  publisher: string;
+  owners: string;
+  owners_parsed: { min: number; max: number; avg: number };
+  tags_array: string[];
+  positive: number;
+  negative: number;
+  average_forever: number;
+  ccu: number;
+  price: string;
+  genre: string;
+}
 
-  // 모의 CCU 데이터
-  const ccuData = useMemo(() => generateMockCCUData(), []);
-
-  // Boxleiter 매출 추정
-  const boxleiterResult = useMemo(() => {
-    if (!game || !game.reviews) return null;
-    
-    return calculateBoxleiter({
-      totalReviews: game.reviews.total,
-      positiveRatio: game.reviews.positivePercent,
-      priceUsd: game.price?.final ? game.price.final / 100 : 0,
-      releaseYear: game.releaseDate?.date ? new Date(game.releaseDate.date).getFullYear() : 2024,
-      genres: game.genres?.map(g => typeof g === 'string' ? g : g.description) || [],
-    });
-  }, [game]);
-
-  // AI 인사이트 생성 함수
-  const generateGameInsight = async (): Promise<string> => {
-    if (!game) throw new Error('Game data not loaded');
-
-    const response = await fetch(`/api/insight/game/${appId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: game.name,
-        developer: game.developers?.[0],
-        publisher: game.publishers?.[0],
-        releaseDate: game.releaseDate?.date,
-        genres: game.genres?.map(g => typeof g === 'string' ? g : g.description),
-        tags: game.categories?.map(c => c.description),
-        price: game.price?.final ? game.price.final / 100 : 0,
-        ccu: game.currentPlayers,
-        totalReviews: game.reviews?.total,
-        positiveRatio: game.reviews?.positivePercent,
-        estimatedRevenue: boxleiterResult?.estimatedRevenue,
-        estimatedSales: boxleiterResult?.estimatedSales,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to generate insight');
-    }
-
-    const data = await response.json();
-    return data.insight;
+// 리뷰 데이터 타입
+interface ReviewData {
+  query_summary: {
+    num_reviews: number;
+    review_score: number;
+    review_score_desc: string;
+    total_positive: number;
+    total_negative: number;
+    total_reviews: number;
   };
+}
 
-  if (gameError) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Card className="p-6 text-center">
-          <p className="text-red-500 mb-4">게임 정보를 불러올 수 없습니다</p>
-          <Link href="/">
-            <Button>홈으로 돌아가기</Button>
-          </Link>
-        </Card>
-      </div>
-    );
-  }
+// CCU 데이터 타입
+interface CCUResponse {
+  response: {
+    player_count: number;
+    result: number;
+  };
+}
 
-  if (loadingGame) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-64 w-full" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-          <Skeleton className="h-32" />
-        </div>
-      </div>
-    );
-  }
+// CCU 차트 데이터 포인트 타입
+interface CCUDataPoint {
+  time: string;
+  ccu: number;
+}
 
-  if (!game) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Card className="p-6 text-center">
-          <p className="text-gray-500 mb-4">게임을 찾을 수 없습니다</p>
-          <Link href="/">
-            <Button>홈으로 돌아가기</Button>
-          </Link>
-        </Card>
-      </div>
-    );
-  }
-
-  const positiveRatio = game.reviews?.positivePercent || 0;
-
+// 로딩 스켈레톤 컴포넌트
+function GamePageSkeleton() {
   return (
     <div className="space-y-6">
-      {/* 헤더 배너 */}
-      <Card className="overflow-hidden">
-        <div className="relative">
-          {game.backgroundRaw && (
-            <div 
-              className="absolute inset-0 bg-cover bg-center opacity-30"
-              style={{ backgroundImage: `url(${game.backgroundRaw})` }}
-            />
-          )}
-          <div className="relative p-6 bg-gradient-to-r from-gray-900/90 to-gray-900/70">
-            <div className="flex flex-col md:flex-row gap-6">
-              {/* 게임 이미지 */}
-              <img
-                src={game.headerImage}
-                alt={game.name}
-                className="w-full md:w-72 h-auto rounded-lg shadow-lg"
-              />
-              
-              {/* 게임 정보 */}
-              <div className="flex-1 text-white">
-                <div className="flex items-start justify-between gap-4">
-                  <h1 className="text-2xl md:text-3xl font-bold">{game.name}</h1>
-                  <WatchlistButton 
-                    appId={parseInt(appId)} 
-                    appName={game.name}
-                  />
-                </div>
+      {/* 헤더 스켈레톤 */}
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-10 w-10 rounded" />
+        <Skeleton className="h-8 w-64" />
+      </div>
+      
+      {/* 메인 정보 카드 스켈레톤 */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col md:flex-row gap-6">
+            <Skeleton className="w-full md:w-[460px] h-[215px] rounded-lg" />
+            <div className="flex-1 space-y-4">
+              <Skeleton className="h-8 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <div className="flex gap-2">
+                <Skeleton className="h-6 w-16" />
+                <Skeleton className="h-6 w-16" />
+                <Skeleton className="h-6 w-16" />
+              </div>
+              <Skeleton className="h-20 w-full" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* 통계 카드 스켈레톤 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i}>
+            <CardContent className="p-4">
+              <Skeleton className="h-4 w-20 mb-2" />
+              <Skeleton className="h-8 w-24" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-                <div className="flex flex-wrap gap-2 mt-3">
-                  {game.genres?.slice(0, 5).map((genre, idx) => (
-                    <Badge key={idx} variant="secondary">
-                      {typeof genre === 'string' ? genre : genre.description}
+// 통계 카드 컴포넌트
+function StatCard({ 
+  icon: Icon, 
+  label, 
+  value, 
+  subValue,
+  trend 
+}: { 
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  subValue?: string;
+  trend?: 'up' | 'down' | 'neutral';
+}) {
+  return (
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2 text-muted-foreground mb-2">
+          <Icon className="h-4 w-4" />
+          <span className="text-sm font-medium">{label}</span>
+        </div>
+        <div className="text-2xl font-bold">{value}</div>
+        {subValue && (
+          <div className={`text-sm mt-1 ${
+            trend === 'up' ? 'text-green-500' : 
+            trend === 'down' ? 'text-red-500' : 
+            'text-muted-foreground'
+          }`}>
+            {subValue}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// 리뷰 점수 배지 컴포넌트
+function ReviewScoreBadge({ positive, negative }: { positive: number; negative: number }) {
+  const total = positive + negative;
+  if (total === 0) return <Badge variant="secondary">No Reviews</Badge>;
+  
+  const ratio = Math.round((positive / total) * 100);
+  
+  let variant: 'default' | 'secondary' | 'destructive' | 'outline' = 'secondary';
+  let label = '';
+  
+  if (ratio >= 95) {
+    variant = 'default';
+    label = 'Overwhelmingly Positive';
+  } else if (ratio >= 85) {
+    variant = 'default';
+    label = 'Very Positive';
+  } else if (ratio >= 70) {
+    variant = 'secondary';
+    label = 'Mostly Positive';
+  } else if (ratio >= 40) {
+    variant = 'outline';
+    label = 'Mixed';
+  } else if (ratio >= 20) {
+    variant = 'destructive';
+    label = 'Mostly Negative';
+  } else {
+    variant = 'destructive';
+    label = 'Overwhelmingly Negative';
+  }
+  
+  return (
+    <Badge variant={variant} className="text-sm">
+      {label} ({ratio}%)
+    </Badge>
+  );
+}
+
+export default function GameDetailPage() {
+  const params = useParams();
+  const appId = params.appId as string;
+  
+  // Steam API 데이터 가져오기
+  const { data: steamData, isLoading: steamLoading, error: steamError } = useQuery({
+    queryKey: ['steam-app', appId],
+    queryFn: async () => {
+      const res = await fetch(`/api/steam/app/${appId}`);
+      if (!res.ok) throw new Error('Failed to fetch Steam data');
+      return res.json() as Promise<SteamAppData>;
+    },
+    staleTime: 5 * 60 * 1000, // 5분
+  });
+  
+  // SteamSpy 데이터 가져오기
+  const { data: spyData, isLoading: spyLoading } = useQuery({
+    queryKey: ['steamspy', appId],
+    queryFn: async () => {
+      const res = await fetch(`/api/steamspy/${appId}`);
+      if (!res.ok) return null;
+      return res.json() as Promise<SteamSpyData>;
+    },
+    staleTime: 30 * 60 * 1000, // 30분
+  });
+  
+  // 리뷰 데이터 가져오기
+  const { data: reviewData } = useQuery({
+    queryKey: ['steam-reviews', appId],
+    queryFn: async () => {
+      const res = await fetch(`/api/steam/reviews/${appId}`);
+      if (!res.ok) return null;
+      return res.json() as Promise<ReviewData>;
+    },
+    staleTime: 10 * 60 * 1000, // 10분
+  });
+  
+  // CCU 데이터 가져오기
+  const { data: ccuData } = useQuery({
+    queryKey: ['steam-ccu', appId],
+    queryFn: async () => {
+      const res = await fetch(`/api/steam/ccu?appid=${appId}`);
+      if (!res.ok) return null;
+      return res.json() as Promise<CCUResponse>;
+    },
+    staleTime: 5 * 60 * 1000, // 5분
+    refetchInterval: 5 * 60 * 1000, // 5분마다 갱신
+  });
+  
+  // 로딩 상태
+  if (steamLoading) {
+    return (
+      <div className="p-6">
+        <GamePageSkeleton />
+      </div>
+    );
+  }
+  
+  // 에러 상태
+  if (steamError || !steamData) {
+    return (
+      <div className="p-6">
+        <Card className="border-destructive">
+          <CardContent className="p-8 text-center">
+            <Gamepad2 className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+            <h2 className="text-xl font-semibold mb-2">Game Not Found</h2>
+            <p className="text-muted-foreground mb-4">
+              Unable to load game data for App ID: {appId}
+            </p>
+            <Link href="/">
+              <Badge variant="outline" className="cursor-pointer hover:bg-accent">
+                <ArrowLeft className="h-4 w-4 mr-1" />
+                Back to Dashboard
+              </Badge>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
+  // 태그 결정 (SteamSpy 태그 → Steam 장르 순서로 fallback)
+  const displayTags = spyData?.tags_array?.length 
+    ? spyData.tags_array.slice(0, 8)
+    : steamData.genres?.map(g => g.description) || [];
+  
+  // 리뷰 통계
+  const totalReviews = reviewData?.query_summary?.total_reviews || 
+                       (spyData ? spyData.positive + spyData.negative : 0);
+  const positiveReviews = reviewData?.query_summary?.total_positive || spyData?.positive || 0;
+  const negativeReviews = reviewData?.query_summary?.total_negative || spyData?.negative || 0;
+  
+  // 가격 정보
+  const priceUsd = steamData.is_free 
+    ? 0 
+    : (steamData.price_overview?.final || 0) / 100;
+  const originalPrice = steamData.is_free 
+    ? 0 
+    : (steamData.price_overview?.initial || 0) / 100;
+  const discount = steamData.price_overview?.discount_percent || 0;
+  
+  // 출시 연도 파싱
+  const releaseYear = steamData.release_date?.date 
+    ? new Date(steamData.release_date.date).getFullYear() 
+    : new Date().getFullYear();
+  
+  // 장르 배열
+  const genres = steamData.genres?.map(g => g.description) || ['Indie'];
+  
+  // 긍정 비율
+  const positiveRatio = totalReviews > 0 ? (positiveReviews / totalReviews) * 100 : 80;
+  
+  // Boxleiter 매출 추정
+  const boxleiterResult = calculateBoxleiter({
+    totalReviews,
+    releaseYear,
+    priceUsd,
+    genres,
+    positiveRatio,
+  });
+  
+  // SteamSpy owners 기반 매출 추정 (보조 지표)
+  const ownersAvg = spyData?.owners_parsed?.avg || 0;
+  const steamSpyRevenue = ownersAvg * priceUsd;
+  
+  // CCU
+  const currentCCU = ccuData?.response?.player_count || spyData?.ccu || 0;
+  
+  // 평균 플레이 시간 (분 → 시간)
+  const avgPlaytime = spyData?.average_forever 
+    ? Math.round(spyData.average_forever / 60) 
+    : null;
+
+  // CCU 차트 데이터 (현재는 단일 포인트만, 추후 히스토리 API 연동 가능)
+  const ccuChartData: CCUDataPoint[] = currentCCU > 0 
+    ? [
+        { time: 'Now', ccu: currentCCU },
+      ]
+    : [];
+
+  return (
+    <div className="p-6 space-y-6">
+      {/* 헤더 */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="hover:opacity-80 transition-opacity">
+            <div className="p-2 rounded-lg bg-muted hover:bg-accent transition-colors">
+              <ArrowLeft className="h-5 w-5" />
+            </div>
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold">{steamData.name}</h1>
+            <p className="text-sm text-muted-foreground">App ID: {appId}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <WatchlistButton 
+            appId={parseInt(appId)} 
+            appName={steamData.name}
+            headerImage={steamData.header_image}
+          />
+          <a 
+            href={`https://store.steampowered.com/app/${appId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1b2838] text-white hover:bg-[#2a475e] transition-colors"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Steam Store
+          </a>
+        </div>
+      </div>
+
+      {/* 메인 정보 카드 */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* 게임 이미지 */}
+            <div className="relative w-full lg:w-[460px] h-[215px] rounded-lg overflow-hidden bg-muted flex-shrink-0">
+              {steamData.header_image ? (
+                <Image
+                  src={steamData.header_image}
+                  alt={steamData.name}
+                  fill
+                  className="object-cover"
+                  priority
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full">
+                  <Gamepad2 className="h-16 w-16 text-muted-foreground" />
+                </div>
+              )}
+              {discount > 0 && (
+                <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded font-bold">
+                  -{discount}%
+                </div>
+              )}
+            </div>
+            
+            {/* 기본 정보 */}
+            <div className="flex-1 space-y-4">
+              {/* 개발사/퍼블리셔 */}
+              <div className="flex flex-wrap gap-4 text-sm">
+                {steamData.developers?.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Developer:</span>
+                    <span className="font-medium">{steamData.developers.join(', ')}</span>
+                  </div>
+                )}
+                {steamData.publishers?.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-muted-foreground">Publisher:</span>
+                    <span className="font-medium">{steamData.publishers.join(', ')}</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* 출시일 */}
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Release Date:</span>
+                <span className="font-medium">
+                  {steamData.release_date?.coming_soon 
+                    ? 'Coming Soon' 
+                    : steamData.release_date?.date || 'Unknown'}
+                </span>
+              </div>
+              
+              {/* 리뷰 점수 */}
+              <div className="flex items-center gap-3">
+                <ReviewScoreBadge positive={positiveReviews} negative={negativeReviews} />
+                <span className="text-sm text-muted-foreground">
+                  ({formatNumber(totalReviews)} reviews)
+                </span>
+              </div>
+              
+              {/* 태그/장르 */}
+              {displayTags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {displayTags.map((tag, index) => (
+                    <Badge 
+                      key={index} 
+                      variant="outline" 
+                      className="text-xs"
+                    >
+                      <Tag className="h-3 w-3 mr-1" />
+                      {tag}
                     </Badge>
                   ))}
                 </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                  <div>
-                    <p className="text-gray-400 text-sm">개발사</p>
-                    <p className="font-medium">{game.developers?.[0] || 'N/A'}</p>
+              )}
+              
+              {/* 가격 */}
+              <div className="flex items-center gap-3">
+                {steamData.is_free ? (
+                  <Badge className="bg-green-500 hover:bg-green-600 text-lg px-3 py-1">
+                    Free to Play
+                  </Badge>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {discount > 0 && (
+                      <span className="text-muted-foreground line-through">
+                        {formatCurrency(originalPrice)}
+                      </span>
+                    )}
+                    <span className="text-2xl font-bold text-green-500">
+                      {formatCurrency(priceUsd)}
+                    </span>
                   </div>
-                  <div>
-                    <p className="text-gray-400 text-sm">퍼블리셔</p>
-                    <p className="font-medium">{game.publishers?.[0] || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-sm">출시일</p>
-                    <p className="font-medium">{game.releaseDate?.date || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 text-sm">가격</p>
-                    <p className="font-medium">
-                      {game.isFree ? '무료' : 
-                        game.price?.finalFormatted || 
-                        (game.price?.final ? `$${(game.price.final / 100).toFixed(2)}` : 'N/A')}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <a 
-                    href={`https://store.steampowered.com/app/${appId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300"
-                  >
-                    Steam 스토어에서 보기 <ExternalLink className="h-4 w-4" />
-                  </a>
-                </div>
+                )}
               </div>
+              
+              {/* 설명 */}
+              {steamData.short_description && (
+                <p className="text-sm text-muted-foreground line-clamp-3">
+                  {steamData.short_description}
+                </p>
+              )}
             </div>
           </div>
-        </div>
+        </CardContent>
       </Card>
 
-      {/* 핵심 지표 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-gray-500 mb-2">
-              <Star className="h-4 w-4" />
-              <span className="text-sm">리뷰 평점</span>
-            </div>
-            <p className="text-2xl font-bold">{positiveRatio}%</p>
-            <p className="text-sm text-gray-500">
-              {formatNumber(game.reviews?.total || 0)}개 리뷰
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-gray-500 mb-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="text-sm">추정 판매량</span>
-            </div>
-            {boxleiterResult ? (
-              <>
-                <p className="text-2xl font-bold">
-                  {formatNumber(boxleiterResult.estimatedSales)}
-                </p>
-                <p className="text-sm text-gray-500">
-                  승수: {boxleiterResult.multiplier.toFixed(2)}x
-                </p>
-              </>
-            ) : (
-              <Skeleton className="h-8 w-20" />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-gray-500 mb-2">
-              <DollarSign className="h-4 w-4" />
-              <span className="text-sm">추정 매출</span>
-            </div>
-            {boxleiterResult ? (
-              <>
-                <p className="text-2xl font-bold">
-                  {formatCurrency(boxleiterResult.estimatedRevenue)}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Steam 수수료 30% 적용
-                </p>
-              </>
-            ) : (
-              <Skeleton className="h-8 w-20" />
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-gray-500 mb-2">
-              <TrendingUp className="h-4 w-4" />
-              <span className="text-sm">신뢰도</span>
-            </div>
-            {boxleiterResult ? (
-              <>
-                <Badge 
-                  variant={
-                    boxleiterResult.confidence === 'high' ? 'default' :
-                    boxleiterResult.confidence === 'medium' ? 'secondary' : 'outline'
-                  }
-                  className={boxleiterResult.confidence === 'high' ? 'bg-green-500' : ''}
-                >
-                  {boxleiterResult.confidence === 'high' ? '높음' :
-                   boxleiterResult.confidence === 'medium' ? '중간' : '낮음'}
-                </Badge>
-                <p className="text-xs text-gray-500 mt-2">
-                  Boxleiter Method 2.0
-                </p>
-              </>
-            ) : (
-              <Skeleton className="h-8 w-20" />
-            )}
-          </CardContent>
-        </Card>
+      {/* 통계 카드 그리드 */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          icon={Users}
+          label="Current Players"
+          value={formatNumber(currentCCU)}
+          subValue="Live CCU"
+        />
+        <StatCard
+          icon={MessageSquare}
+          label="Total Reviews"
+          value={formatNumber(totalReviews)}
+          subValue={`${totalReviews > 0 ? Math.round((positiveReviews / totalReviews) * 100) : 0}% Positive`}
+          trend={positiveReviews / totalReviews > 0.7 ? 'up' : positiveReviews / totalReviews < 0.4 ? 'down' : 'neutral'}
+        />
+        <StatCard
+          icon={DollarSign}
+          label="Est. Revenue"
+          value={formatBoxleiterCurrency(boxleiterResult.estimatedRevenue)}
+          subValue={`~${formatNumber(boxleiterResult.estimatedSales)} copies`}
+        />
+        <StatCard
+          icon={Star}
+          label="Owners"
+          value={spyData?.owners_parsed 
+            ? `${formatNumber(spyData.owners_parsed.min)} - ${formatNumber(spyData.owners_parsed.max)}`
+            : 'N/A'}
+          subValue={spyLoading ? 'Loading...' : 'SteamSpy estimate'}
+        />
       </div>
 
-      {/* AI 인사이트 */}
-      <InsightCard 
-        title="AI 투자 인사이트" 
-        onGenerate={generateGameInsight}
-      />
+      {/* 추가 통계 (2열) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {avgPlaytime !== null && (
+          <StatCard
+            icon={Clock}
+            label="Avg. Playtime"
+            value={`${avgPlaytime}h`}
+            subValue="All players"
+          />
+        )}
+        {steamData.metacritic?.score && (
+          <StatCard
+            icon={Star}
+            label="Metacritic"
+            value={steamData.metacritic.score}
+            subValue="Critic Score"
+            trend={steamData.metacritic.score >= 80 ? 'up' : steamData.metacritic.score < 60 ? 'down' : 'neutral'}
+          />
+        )}
+        {steamData.achievements?.total && (
+          <StatCard
+            icon={TrendingUp}
+            label="Achievements"
+            value={steamData.achievements.total}
+          />
+        )}
+        {steamSpyRevenue > 0 && priceUsd > 0 && (
+          <StatCard
+            icon={BarChart3}
+            label="SteamSpy Revenue"
+            value={formatBoxleiterCurrency(steamSpyRevenue)}
+            subValue="Based on owners"
+          />
+        )}
+      </div>
 
       {/* CCU 차트 */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            동시접속자 추이 (데모)
+            <TrendingUp className="h-5 w-5" />
+            Player Count
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <CCUChart data={ccuData} />
+          {ccuChartData.length > 0 ? (
+            <CCUChart data={ccuChartData} />
+          ) : (
+            <div className="flex items-center justify-center h-[300px] bg-muted/50 rounded-lg">
+              <p className="text-muted-foreground">CCU 데이터가 없습니다</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* 게임 설명 */}
+      {/* 플랫폼 지원 */}
       <Card>
         <CardHeader>
-          <CardTitle>게임 소개</CardTitle>
+          <CardTitle>Platform Support</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-gray-700 dark:text-gray-300">
-            {game.shortDescription || game.description || '설명이 없습니다.'}
-          </p>
+          <div className="flex gap-4">
+            <Badge variant={steamData.platforms?.windows ? 'default' : 'outline'}>
+              Windows {steamData.platforms?.windows ? '✓' : '✗'}
+            </Badge>
+            <Badge variant={steamData.platforms?.mac ? 'default' : 'outline'}>
+              macOS {steamData.platforms?.mac ? '✓' : '✗'}
+            </Badge>
+            <Badge variant={steamData.platforms?.linux ? 'default' : 'outline'}>
+              Linux {steamData.platforms?.linux ? '✓' : '✗'}
+            </Badge>
+          </div>
         </CardContent>
       </Card>
-
-      {/* 태그 및 카테고리 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Tag className="h-5 w-5" />
-              카테고리
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {game.categories?.map((cat) => (
-                <Badge key={cat.id} variant="outline">
-                  {cat.description}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              지원 플랫폼
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-4">
-              {game.platforms?.windows && (
-                <Badge>Windows</Badge>
-              )}
-              {game.platforms?.mac && (
-                <Badge>Mac</Badge>
-              )}
-              {game.platforms?.linux && (
-                <Badge>Linux</Badge>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

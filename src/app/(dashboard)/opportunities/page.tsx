@@ -97,9 +97,9 @@ export default function OpportunitiesPage() {
   };
 
   const getScoreBadge = (score: number) => {
-    if (score > 2) return { label: '높음', variant: 'default' as const, className: 'bg-green-500' };
-    if (score > 1) return { label: '중간', variant: 'secondary' as const, className: '' };
-    return { label: '낮음', variant: 'outline' as const, className: '' };
+    if (score > 2) return { label: 'High', variant: 'default' as const, className: 'bg-green-500' };
+    if (score > 1) return { label: 'Medium', variant: 'secondary' as const, className: '' };
+    return { label: 'Low', variant: 'outline' as const, className: '' };
   };
 
   return (
@@ -108,9 +108,11 @@ export default function OpportunitiesPage() {
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Target className="h-6 w-6 text-purple-500" />
-          기회 발굴 (Niche Finder)
+          Niche Finder
         </h1>
-        <p className="text-gray-500 mt-1">수요 대비 공급이 적은 블루오션 시장을 찾아보세요</p>
+        <p className="text-muted-foreground mt-1">
+          Discover untapped market opportunities with low competition and high demand
+        </p>
       </div>
 
       {/* 알고리즘 설명 */}
@@ -119,11 +121,11 @@ export default function OpportunitiesPage() {
           <div className="flex items-start gap-3">
             <Info className="h-5 w-5 text-blue-500 mt-0.5" />
             <div className="text-sm text-blue-700 dark:text-blue-300">
-              <p className="font-medium mb-1">기회 점수 계산 공식</p>
+              <p className="font-medium mb-1">Opportunity Score Formula</p>
               <p className="font-mono text-xs bg-blue-100 dark:bg-blue-900 p-2 rounded">
-                기회 점수 = (시장 규모 / 평균 시장) × (1 / log(경쟁 게임 수 + 1)) × 성공률
+                Score = (Market Size / Avg Market) × (1 / log(Competition + 1)) × Success Rate
               </p>
-              <p className="mt-2">점수가 높을수록 수요 대비 경쟁이 적은 유망 시장입니다.</p>
+              <p className="mt-2">Higher scores indicate promising markets with low competition relative to demand.</p>
             </div>
           </div>
         </CardContent>
@@ -132,7 +134,7 @@ export default function OpportunitiesPage() {
       {/* 태그 필터 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">태그 필터</CardTitle>
+          <CardTitle className="text-lg">Tag Filter</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2">
@@ -140,7 +142,7 @@ export default function OpportunitiesPage() {
               <Badge
                 key={tag}
                 variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-                className="cursor-pointer hover:bg-primary/80"
+                className="cursor-pointer hover:bg-primary/80 transition-colors"
                 onClick={() => {
                   setSelectedTags(prev =>
                     prev.includes(tag)
@@ -160,7 +162,7 @@ export default function OpportunitiesPage() {
               className="mt-2"
               onClick={() => setSelectedTags([])}
             >
-              필터 초기화
+              Clear Filters
             </Button>
           )}
         </CardContent>
@@ -168,7 +170,7 @@ export default function OpportunitiesPage() {
 
       {/* AI 인사이트 */}
       <InsightCard 
-        title="AI 시장 기회 분석" 
+        title="AI Market Opportunity Analysis" 
         onGenerate={generateOpportunityInsight}
       />
 
@@ -177,7 +179,7 @@ export default function OpportunitiesPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Lightbulb className="h-5 w-5 text-yellow-500" />
-            기회 시장 순위
+            Opportunity Ranking
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -188,12 +190,12 @@ export default function OpportunitiesPage() {
               return (
                 <div 
                   key={opp.tags.join('-')}
-                  className="flex items-center gap-4 p-4 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  className="flex items-center gap-4 p-4 rounded-lg border hover:bg-accent/50 transition-colors"
                 >
                   {/* 순위 */}
                   <div className="w-8 text-center">
                     <span className={`font-bold text-lg ${
-                      index < 3 ? 'text-purple-500' : 'text-gray-400'
+                      index < 3 ? 'text-purple-500' : 'text-muted-foreground'
                     }`}>
                       {index + 1}
                     </span>
@@ -208,15 +210,15 @@ export default function OpportunitiesPage() {
                         </Badge>
                       ))}
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <BarChart3 className="h-3 w-3" />
-                        평균 리뷰: {formatNumber(opp.avgReviews)}
+                        Avg Reviews: {formatNumber(opp.avgReviews)}
                       </span>
-                      <span>게임 수: {opp.gameCount}개</span>
+                      <span>Games: {opp.gameCount}</span>
                       <span className="flex items-center gap-1">
                         <TrendingUp className="h-3 w-3" />
-                        성공률: {(opp.successRate * 100).toFixed(0)}%
+                        Success Rate: {(opp.successRate * 100).toFixed(0)}%
                       </span>
                     </div>
                   </div>
@@ -231,14 +233,14 @@ export default function OpportunitiesPage() {
                     </Badge>
                     <p className={`text-2xl font-bold mt-1 ${
                       opp.opportunityScore > 2 ? 'text-green-500' :
-                      opp.opportunityScore > 1 ? 'text-yellow-500' : 'text-gray-500'
+                      opp.opportunityScore > 1 ? 'text-yellow-500' : 'text-muted-foreground'
                     }`}>
                       {opp.opportunityScore.toFixed(2)}
                     </p>
                   </div>
 
                   {/* 화살표 */}
-                  <ArrowUpRight className="h-5 w-5 text-gray-400" />
+                  <ArrowUpRight className="h-5 w-5 text-muted-foreground" />
                 </div>
               );
             })}
@@ -254,7 +256,7 @@ export default function OpportunitiesPage() {
             <p className="text-3xl font-bold text-purple-600">
               {filteredOpportunities.filter(o => o.opportunityScore > 2).length}
             </p>
-            <p className="text-sm text-gray-500">높은 기회 시장</p>
+            <p className="text-sm text-muted-foreground">High Opportunity Markets</p>
           </CardContent>
         </Card>
 
@@ -264,7 +266,7 @@ export default function OpportunitiesPage() {
             <p className="text-3xl font-bold text-green-600">
               {(filteredOpportunities.reduce((sum, o) => sum + o.successRate, 0) / filteredOpportunities.length * 100).toFixed(0)}%
             </p>
-            <p className="text-sm text-gray-500">평균 성공률</p>
+            <p className="text-sm text-muted-foreground">Average Success Rate</p>
           </CardContent>
         </Card>
 
@@ -276,7 +278,7 @@ export default function OpportunitiesPage() {
                 filteredOpportunities.reduce((sum, o) => sum + o.avgReviews, 0) / filteredOpportunities.length
               )}
             </p>
-            <p className="text-sm text-gray-500">평균 리뷰 수</p>
+            <p className="text-sm text-muted-foreground">Average Reviews</p>
           </CardContent>
         </Card>
       </div>
