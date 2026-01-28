@@ -15,7 +15,7 @@ const GEMINI_KEYS = [
 ].filter(Boolean) as string[];
 
 const DAILY_LIMIT_PER_KEY = 950;
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 // 캐시 TTL 설정 (초)
 export const INSIGHT_TTL = {
