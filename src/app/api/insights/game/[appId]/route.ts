@@ -7,7 +7,14 @@ export async function POST(
 ) {
   try {
     const { appId } = await params;
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    
+    if (!body) {
+      return NextResponse.json(
+        { error: 'Invalid JSON body' },
+        { status: 400 }
+      );
+    }
     
     const gameData = {
       appId: parseInt(appId),
@@ -32,7 +39,11 @@ export async function POST(
       );
     }
 
+    console.log('[Game Insight] Generating for', gameData.name);
+
     const insight = await generateGameInsight(gameData);
+
+    console.log('[Game Insight] Generated successfully');
 
     return NextResponse.json({
       success: true,
@@ -41,11 +52,15 @@ export async function POST(
       generatedAt: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Game insight error:', error);
+    console.error('[Game Insight] Error:', error);
+    
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    
     return NextResponse.json(
       { 
         error: 'Failed to generate insight',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message,
+        details: String(error)
       },
       { status: 500 }
     );
