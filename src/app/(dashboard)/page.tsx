@@ -1,0 +1,535 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { useFeatured, useSearch, useMultipleCCU } from '@/hooks/useSteamData';
+import GameCard from '@/components/cards/GameCard';
+import GameCardSkeleton from '@/components/cards/GameCardSkeleton';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Users,
+  TrendingUp,
+  Percent,
+  Sparkles,
+  Search,
+  Clock,
+  Trophy,
+  Tag,
+  Flame,
+} from 'lucide-react';
+import Link from 'next/link';
+
+// 인기 게임 AppID (CCU 조회용)
+const POPULAR_GAMES = [
+  { appId: 730, name: 'Counter-Strike 2' },
+  { appId: 570, name: 'Dota 2' },
+  { appId: 440, name: 'Team Fortress 2' },
+  { appId: 1172470, name: 'Apex Legends' },
+  { appId: 578080, name: 'PUBG' },
+  { appId: 252490, name: 'Rust' },
+  { appId: 1245620, name: 'Elden Ring' },
+  { appId: 1091500, name: 'Cyberpunk 2077' },
+  { appId: 892970, name: 'Valheim' },
+  { appId: 413150, name: 'Stardew Valley' },
+];
+
+const POPULAR_APP_IDS = POPULAR_GAMES.map((g) => g.appId);
+
+// 가격 포맷 함수
+const formatPrice = (cents: number, currency: string = 'USD') => {
+  if (cents === 0) return 'Free';
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+  }).format(cents / 100);
+};
+
+// 시간 포맷 함수
+const formatTime = (timestamp: string) => {
+  const date = new Date(timestamp);
+  return date.toLocaleString('ko-KR', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+// 중복 제거 함수 (id 기준)
+function removeDuplicates<T extends { id: number }>(items: T[]): T[] {
+  const seen = new Set<number>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+export default function DashboardPage() {
+  const searchParams = useSearchParams();
+  const urlSearch = searchParams.get('search') || '';
+  
+  const [searchQuery, setSearchQuery] = useState(urlSearch);
+  const [activeSearch, setActiveSearch] = useState(urlSearch);
+  
+  // URL 파라미터 변경 시 검색 실행
+  useEffect(() => {
+    if (urlSearch) {
+      setSearchQuery(urlSearch);
+      setActiveSearch(urlSearch);
+    }
+  }, [urlSearch]);
+
+  const { data: featured, isLoading: featuredLoading } = useFeatured();
+  const { data: searchResults, isLoading: searchLoading } = useSearch(activeSearch);
+  const { data: ccuData, isLoading: ccuLoading } = useMultipleCCU(POPULAR_APP_IDS);
+
+  // 총 동접자 계산
+  const totalCCU = ccuData?.reduce((sum, item) => sum + item.ccu, 0) || 0;
+
+  // CCU 데이터를 게임 정보와 합치고 정렬
+  const ccuWithNames = POPULAR_GAMES.map((game) => ({
+    ...game,
+    ccu: ccuData?.find((c) => c.appId === game.appId)?.ccu || 0,
+  })).sort((a, b) => b.ccu - a.ccu);
+
+  // 1위 게임
+  const topGame = ccuWithNames[0];
+
+  // 중복 제거된 데이터
+  const uniqueSpecials = removeDuplicates(featured?.specials || []);
+  const uniqueNewReleases = removeDuplicates(featured?.newReleases || []);
+  const uniqueTopSellers = removeDuplicates(featured?.topSellers || []);
+
+  // 세일 통계 계산
+  const maxDiscount = uniqueSpecials.length > 0 
+    ? Math.max(...uniqueSpecials.map((g) => g.discount_percent)) 
+    : 0;
+  const avgDiscount = uniqueSpecials.length > 0
+    ? Math.round(uniqueSpecials.reduce((sum, g) => sum + g.discount_percent, 0) / uniqueSpecials.length)
+    : 0;
+  const bestDeal = uniqueSpecials.find((g) => g.discount_percent === maxDiscount);
+
+  // 신규 출시 통계
+  const freeNewReleases = uniqueNewReleases.filter((g) => g.final_price === 0).length;
+  const discountedNewReleases = uniqueNewReleases.filter((g) => g.discount_percent > 0).length;
+
+  // 베스트셀러 통계
+  const discountedTopSellers = uniqueTopSellers.filter((g) => g.discount_percent > 0).length;
+  const topSeller = uniqueTopSellers[0];
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setActiveSearch(searchQuery);
+  };
+
+  // 현재 시간 (CCU용)
+  const [now, setNow] = useState<string>('');
+
+useEffect(() => {
+  setNow(new Date().toISOString());
+}, []);
+
+  return (
+    <div className="space-y-8">
+      {/* 헤더 */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Market Pulse</h1>
+          <p className="text-muted-foreground">
+            Steam 마켓 실시간 현황을 한눈에 파악하세요
+          </p>
+        </div>
+
+        {/* 검색 */}
+        <form onSubmit={handleSearch} className="flex gap-2 w-full md:w-auto">
+          <Input
+            placeholder="게임 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="md:w-64"
+          />
+          <Button type="submit" size="icon">
+            <Search className="h-4 w-4" />
+          </Button>
+        </form>
+      </div>
+
+      {/* 검색 결과 */}
+      {activeSearch && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Search className="h-5 w-5" />
+              &quot;{activeSearch}&quot; 검색 결과
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {searchLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {[...Array(5)].map((_, i) => (
+                  <GameCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : searchResults?.items?.length ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {searchResults.items.slice(0, 10).map((game) => (
+                  <GameCard
+                    key={game.id}
+                    id={game.id}
+                    name={game.name}
+                    image={game.tiny_image.replace('capsule_sm_120', 'header')}
+                    price={
+                      game.price
+                        ? {
+                            final: game.price.final,
+                            discount_percent: game.price.discount_percent,
+                            currency: game.price.currency,
+                          }
+                        : null
+                    }
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground">검색 결과가 없습니다.</p>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-4"
+              onClick={() => {
+                setActiveSearch('');
+                setSearchQuery('');
+              }}
+            >
+              검색 닫기
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 섹션 1: 동접자 TOP 10 */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-blue-500" />
+                실시간 동접자 TOP 10
+              </CardTitle>
+              <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                {now ? formatTime(now) : '-'}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <div className="text-center px-4 py-2 bg-muted rounded-lg">
+                <div className="text-2xl font-bold">{totalCCU.toLocaleString()}</div>
+                <div className="text-xs text-muted-foreground">총 동접자</div>
+              </div>
+              {topGame && (
+                <div className="text-center px-4 py-2 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                  <div className="flex items-center gap-1 justify-center">
+                    <Trophy className="h-4 w-4 text-yellow-500" />
+                    <span className="font-bold">{topGame.name}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    1위 · {topGame.ccu.toLocaleString()}명
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {ccuLoading ? (
+            <div className="text-muted-foreground">로딩 중...</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">순위</TableHead>
+                  <TableHead>게임</TableHead>
+                  <TableHead className="text-right">동접자</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {ccuWithNames.map((game, index) => (
+                  <TableRow key={game.appId}>
+                    <TableCell>
+                      <Badge variant={index < 3 ? 'default' : 'outline'}>
+                        {index + 1}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/game/${game.appId}`}
+                        className="hover:underline font-medium"
+                      >
+                        {game.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {game.ccu.toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 섹션 2: 현재 세일 중 */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Percent className="h-5 w-5 text-green-500" />
+                현재 세일 중
+              </CardTitle>
+              {featured?.timestamp && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {formatTime(featured.timestamp)}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <div className="text-center px-4 py-2 bg-muted rounded-lg">
+                <div className="text-2xl font-bold">{uniqueSpecials.length}개</div>
+                <div className="text-xs text-muted-foreground">할인 게임</div>
+              </div>
+              <div className="text-center px-4 py-2 bg-green-50 dark:bg-green-950 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">-{maxDiscount}%</div>
+                <div className="text-xs text-muted-foreground">최고 할인율</div>
+              </div>
+              <div className="text-center px-4 py-2 bg-muted rounded-lg">
+                <div className="text-2xl font-bold">-{avgDiscount}%</div>
+                <div className="text-xs text-muted-foreground">평균 할인율</div>
+              </div>
+              {bestDeal && (
+                <div className="text-center px-4 py-2 bg-green-50 dark:bg-green-950 rounded-lg">
+                  <div className="flex items-center gap-1 justify-center">
+                    <Tag className="h-4 w-4 text-green-500" />
+                    <span className="font-bold text-sm truncate max-w-32">{bestDeal.name}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">최고 할인</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {featuredLoading ? (
+            <div className="text-muted-foreground">로딩 중...</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>게임</TableHead>
+                  <TableHead className="text-center">할인율</TableHead>
+                  <TableHead className="text-right">원가</TableHead>
+                  <TableHead className="text-right">할인가</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {uniqueSpecials.slice(0, 10).map((game) => (
+                  <TableRow key={game.id}>
+                    <TableCell>
+                      <Link
+                        href={`/game/${game.id}`}
+                        className="hover:underline font-medium"
+                      >
+                        {game.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge className="bg-green-600">-{game.discount_percent}%</Badge>
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground line-through">
+                      {formatPrice(game.original_price || 0, game.currency)}
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-green-600">
+                      {formatPrice(game.final_price, game.currency)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 섹션 3: 신규 출시 */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-purple-500" />
+                신규 출시
+              </CardTitle>
+              {featured?.timestamp && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {formatTime(featured.timestamp)}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <div className="text-center px-4 py-2 bg-muted rounded-lg">
+                <div className="text-2xl font-bold">{uniqueNewReleases.length}개</div>
+                <div className="text-xs text-muted-foreground">신규 게임</div>
+              </div>
+              <div className="text-center px-4 py-2 bg-purple-50 dark:bg-purple-950 rounded-lg">
+                <div className="text-2xl font-bold text-purple-600">{freeNewReleases}개</div>
+                <div className="text-xs text-muted-foreground">무료 게임</div>
+              </div>
+              <div className="text-center px-4 py-2 bg-green-50 dark:bg-green-950 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{discountedNewReleases}개</div>
+                <div className="text-xs text-muted-foreground">출시 할인</div>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {featuredLoading ? (
+            <div className="text-muted-foreground">로딩 중...</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>게임</TableHead>
+                  <TableHead className="text-center">할인</TableHead>
+                  <TableHead className="text-right">가격</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {uniqueNewReleases.slice(0, 10).map((game) => (
+                  <TableRow key={game.id}>
+                    <TableCell>
+                      <Link
+                        href={`/game/${game.id}`}
+                        className="hover:underline font-medium"
+                      >
+                        {game.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {game.discount_percent > 0 ? (
+                        <Badge className="bg-green-600">-{game.discount_percent}%</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatPrice(game.final_price, game.currency)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 섹션 4: 베스트셀러 */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-orange-500" />
+                베스트셀러
+              </CardTitle>
+              {featured?.timestamp && (
+                <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  {formatTime(featured.timestamp)}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <div className="text-center px-4 py-2 bg-muted rounded-lg">
+                <div className="text-2xl font-bold">{uniqueTopSellers.length}개</div>
+                <div className="text-xs text-muted-foreground">인기 게임</div>
+              </div>
+              <div className="text-center px-4 py-2 bg-green-50 dark:bg-green-950 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{discountedTopSellers}개</div>
+                <div className="text-xs text-muted-foreground">할인 중</div>
+              </div>
+              {topSeller && (
+                <div className="text-center px-4 py-2 bg-orange-50 dark:bg-orange-950 rounded-lg">
+                  <div className="flex items-center gap-1 justify-center">
+                    <Flame className="h-4 w-4 text-orange-500" />
+                    <span className="font-bold text-sm truncate max-w-32">{topSeller.name}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">1위</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {featuredLoading ? (
+            <div className="text-muted-foreground">로딩 중...</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">순위</TableHead>
+                  <TableHead>게임</TableHead>
+                  <TableHead className="text-center">할인</TableHead>
+                  <TableHead className="text-right">가격</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {uniqueTopSellers.slice(0, 10).map((game, index) => (
+                  <TableRow key={game.id}>
+                    <TableCell>
+                      <Badge variant={index < 3 ? 'default' : 'outline'}>
+                        {index + 1}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/game/${game.id}`}
+                        className="hover:underline font-medium"
+                      >
+                        {game.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {game.discount_percent > 0 ? (
+                        <Badge className="bg-green-600">-{game.discount_percent}%</Badge>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatPrice(game.final_price, game.currency)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
