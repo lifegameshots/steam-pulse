@@ -10,7 +10,7 @@ interface CCUData {
 }
 
 // Featured 게임 타입
-interface FeaturedGame {
+export interface FeaturedGame {
   id: number;
   type: number;
   name: string;
@@ -31,7 +31,7 @@ interface FeaturedGame {
 }
 
 // API 응답 구조에 맞춤
-interface FeaturedData {
+export interface FeaturedData {
   specials: FeaturedGame[];
   topSellers: FeaturedGame[];
   newReleases: FeaturedGame[];
@@ -62,7 +62,9 @@ export interface AppDetailsData {
   type: string;
   isFree: boolean;
   description?: string;
+  shortDescription?: string;
   headerImage?: string;
+  backgroundRaw?: string;
   developers?: string[];
   publishers?: string[];
   price?: {
@@ -70,12 +72,19 @@ export interface AppDetailsData {
     initial: number;
     final: number;
     discountPercent: number;
+    finalFormatted?: string;
   } | null;
   releaseDate?: {
     coming_soon: boolean;
     date: string;
   };
-  genres?: string[];
+  genres?: { id: string; description: string }[];
+  categories?: { id: number; description: string }[];
+  platforms?: {
+    windows: boolean;
+    mac: boolean;
+    linux: boolean;
+  };
   metacritic?: {
     score: number;
     url: string;
@@ -96,6 +105,31 @@ export interface AppDetailsData {
     tags: Record<string, number>;
   } | null;
   timestamp?: string;
+}
+
+// 리뷰 데이터 타입
+interface ReviewData {
+  success: number;
+  query_summary: {
+    num_reviews: number;
+    review_score: number;
+    review_score_desc: string;
+    total_positive: number;
+    total_negative: number;
+    total_reviews: number;
+  };
+}
+
+// Top 게임 데이터 타입 (ChartsTop API)
+interface TopGamesData {
+  response: {
+    ranks: {
+      rank: number;
+      appid: number;
+      concurrent_in_game: number;
+      peak_in_game: number;
+    }[];
+  };
 }
 
 // 특정 게임 CCU 조회
@@ -136,7 +170,7 @@ export function useSearch(query: string) {
   });
 }
 
-// 앱 상세 정보 (API 응답 그대로 반환)
+// 앱 상세 정보
 export function useAppDetails(appId: string | number) {
   return useQuery<AppDetailsData>({
     queryKey: ['app', appId],
@@ -146,6 +180,49 @@ export function useAppDetails(appId: string | number) {
       return res.json();
     },
     enabled: !!appId,
+  });
+}
+
+// useGameDetails는 useAppDetails의 별칭
+export const useGameDetails = useAppDetails;
+
+// 게임 리뷰 조회
+export function useGameReviews(appId: string | number) {
+  return useQuery<ReviewData>({
+    queryKey: ['reviews', appId],
+    queryFn: async () => {
+      const res = await fetch(`/api/steam/reviews/${appId}`);
+      if (!res.ok) throw new Error('Failed to fetch reviews');
+      return res.json();
+    },
+    enabled: !!appId,
+  });
+}
+
+// Top 게임 (CCU 순위) 조회
+export function useTopGames() {
+  return useQuery<TopGamesData>({
+    queryKey: ['topGames'],
+    queryFn: async () => {
+      // Steam Charts API를 직접 호출하거나 우리 API를 통해 가져옴
+      // 여기서는 globalCCU API를 활용하여 변환
+      const res = await fetch('/api/steam/ccu');
+      if (!res.ok) throw new Error('Failed to fetch top games');
+      const data = await res.json();
+      
+      // GlobalCCU 응답을 TopGamesData 형식으로 변환
+      return {
+        response: {
+          ranks: data.topGames?.map((game: { appId: number; name: string; ccu: number }, index: number) => ({
+            rank: index + 1,
+            appid: game.appId,
+            concurrent_in_game: game.ccu,
+            peak_in_game: game.ccu, // peak 데이터가 없으면 현재 CCU 사용
+          })) || []
+        }
+      };
+    },
+    staleTime: 1000 * 60 * 5, // 5분
   });
 }
 

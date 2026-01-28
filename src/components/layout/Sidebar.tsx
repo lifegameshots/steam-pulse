@@ -1,5 +1,3 @@
-// 사이드바 네비게이션
-
 'use client';
 
 import Link from 'next/link';
@@ -8,7 +6,7 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard,
   TrendingUp,
-  Search,
+  Target,
   Building2,
   Rocket,
   Tag,
@@ -19,7 +17,7 @@ import {
 const navItems = [
   { href: '/', label: 'Market Pulse', icon: LayoutDashboard },
   { href: '/trending', label: 'Trending', icon: TrendingUp },
-  { href: '/opportunities', label: 'Niche Finder', icon: Search },
+  { href: '/opportunities', label: 'Niche Finder', icon: Target },
   { href: '/competitors', label: 'Competitors', icon: Building2 },
   { href: '/hype', label: 'Hype Tracker', icon: Rocket },
   { href: '/sales', label: 'Sale Monitor', icon: Tag },

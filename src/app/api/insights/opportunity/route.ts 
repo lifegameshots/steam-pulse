@@ -1,0 +1,33 @@
+import { NextResponse } from 'next/server';
+import { generateOpportunityInsight } from '@/lib/api/gemini';
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { opportunities } = body;
+
+    if (!opportunities || !Array.isArray(opportunities)) {
+      return NextResponse.json(
+        { error: 'opportunities array is required' },
+        { status: 400 }
+      );
+    }
+
+    const insight = await generateOpportunityInsight(opportunities);
+
+    return NextResponse.json({
+      success: true,
+      insight,
+      generatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Opportunity insight error:', error);
+    return NextResponse.json(
+      { 
+        error: 'Failed to generate insight',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    );
+  }
+}

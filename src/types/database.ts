@@ -321,6 +321,13 @@ export interface Database {
         };
         Returns: void;
       };
+      get_least_used_key: {
+        Args: {
+          p_key_count: number;
+          p_daily_limit?: number;
+        };
+        Returns: number;
+      };
     };
   };
 }
