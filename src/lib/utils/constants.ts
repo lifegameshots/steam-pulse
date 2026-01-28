@@ -168,7 +168,7 @@ export const NAV_ITEMS = [
 
 // Gemini 설정
 export const GEMINI_CONFIG = {
-  MODEL: 'gemini-1.5-flash',
+  MODEL: 'gemini-2.5-flash',
   MAX_TOKENS: 1024,
   TEMPERATURE: 0.7,
   DAILY_LIMIT_PER_KEY: 950,  // 안전 마진
