@@ -4,7 +4,7 @@ import { generateOpportunityInsight } from '@/lib/api/gemini';
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => null);
-    
+
     if (!body) {
       return NextResponse.json(
         { error: 'Invalid JSON body' },
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { opportunities } = body;
+    const { opportunities, selectedTags } = body;
 
     if (!opportunities || !Array.isArray(opportunities)) {
       return NextResponse.json(
@@ -21,9 +21,9 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log('[Opportunity Insight] Generating for', opportunities.length, 'opportunities');
+    console.log('[Opportunity Insight] Generating for', opportunities.length, 'opportunities, tags:', selectedTags || 'none');
 
-    const insight = await generateOpportunityInsight(opportunities);
+    const insight = await generateOpportunityInsight(opportunities, selectedTags);
 
     console.log('[Opportunity Insight] Generated successfully');
 

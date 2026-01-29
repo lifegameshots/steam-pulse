@@ -19,6 +19,7 @@ import {
   HelpCircle,
   CalendarDays,
   Heart,
+  Gift,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -37,7 +38,7 @@ interface NavItem {
   tooltip: string;
 }
 
-// 메뉴 순서: 시장현황, 트렌딩, 위시리스트 분석, 고급 분석, 경쟁사 분석, 기회 발굴, 이벤트 캘린더, 관심 목록, 기대작 추적, 세일 모니터
+// 메뉴 순서: 시장현황, 트렌딩, 위시리스트 분석, 고급 분석, Free To Play, 경쟁사 분석, 기회 발굴, 이벤트 캘린더, 관심 목록, 기대작 추적, 세일 모니터
 const navItems: NavItem[] = [
   {
     href: '/',
@@ -66,6 +67,13 @@ const navItems: NavItem[] = [
     labelKr: '고급 분석',
     icon: BarChart3,
     tooltip: '리텐션, 변동성, 포지셔닝 등 심층 분석',
+  },
+  {
+    href: '/f2p',
+    label: 'Free To Play',
+    labelKr: 'Free To Play',
+    icon: Gift,
+    tooltip: 'F2P 게임의 수익화 전략과 유료 상품 구조를 분석합니다',
   },
   {
     href: '/competitors',

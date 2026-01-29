@@ -370,9 +370,14 @@ export async function generateOpportunityInsight(
     gameCount: number;
     successRate: number;
     opportunityScore: number;
-  }>
+  }>,
+  selectedTags?: string[]
 ): Promise<string> {
-  const cacheKey = `opportunity:${new Date().toISOString().split('T')[0]}`;
+  // 선택된 태그가 있으면 캐시 키에 포함 (태그별로 다른 분석 제공)
+  const tagHash = selectedTags && selectedTags.length > 0
+    ? `:tags:${selectedTags.sort().join('_')}`
+    : ':all';
+  const cacheKey = `opportunity:${new Date().toISOString().split('T')[0]}${tagHash}`;
   
   // 캐시 확인
   const cached = await getCachedInsight(cacheKey);
@@ -380,17 +385,22 @@ export async function generateOpportunityInsight(
     return cached;
   }
 
-  const opportunitiesList = opportunities.slice(0, 10).map((o, i) => 
-    `${i + 1}. [${o.tags.join(' + ')}] - 평균 리뷰: ${o.avgReviews.toLocaleString()}, 게임 수: ${o.gameCount}, 성공률: ${o.successRate.toFixed(1)}%, 기회점수: ${o.opportunityScore.toFixed(2)}`
+  const opportunitiesList = opportunities.slice(0, 10).map((o, i) =>
+    `${i + 1}. [${o.tags.join(' + ')}] - 평균 리뷰: ${o.avgReviews.toLocaleString()}, 게임 수: ${o.gameCount}, 성공률: ${(o.successRate * 100).toFixed(1)}%, 기회점수: ${o.opportunityScore.toFixed(2)}`
   ).join('\n');
 
-  const prompt = `당신은 Steam 게임 시장 기회 분석 전문가입니다. 아래 블루오션 기회 데이터를 분석하고 한국어로 인사이트를 제공해주세요.
+  const selectedTagsInfo = selectedTags && selectedTags.length > 0
+    ? `\n\n## 사용자 선택 태그 필터\n선택된 태그: **${selectedTags.join(', ')}**\n위 태그와 관련된 기회 시장을 분석합니다.`
+    : '';
 
+  const prompt = `당신은 Steam 게임 시장 기회 분석 전문가입니다. 아래 블루오션 기회 데이터를 분석하고 한국어로 인사이트를 제공해주세요.
+${selectedTagsInfo}
 ## 기회 시장 TOP 10
 ${opportunitiesList}
 
 ## 분석 요청
-1. **유망 니치 시장**: 가장 주목할 만한 태그 조합과 이유
+${selectedTags && selectedTags.length > 0 ? `**[${selectedTags.join(', ')}] 태그 기반 맞춤 분석을 제공해주세요:**` : ''}
+1. **유망 니치 시장**: 가장 주목할 만한 태그 조합과 이유${selectedTags?.length ? ' (선택된 태그와의 시너지 포함)' : ''}
 2. **진입 전략**: 이런 시장에 진입할 때 고려할 점
 3. **리스크 요인**: 주의해야 할 점
 4. **추천 액션**: 인디 개발자에게 추천하는 구체적인 방향

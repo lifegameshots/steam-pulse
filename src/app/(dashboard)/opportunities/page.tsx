@@ -140,7 +140,8 @@ export default function OpportunitiesPage() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        opportunities: filteredOpportunities.slice(0, 10)
+        opportunities: filteredOpportunities.slice(0, 10),
+        selectedTags: selectedTags.length > 0 ? selectedTags : undefined
       }),
     });
 
@@ -289,9 +290,12 @@ export default function OpportunitiesPage() {
             </CardContent>
           </Card>
 
-          {/* AI 인사이트 */}
+          {/* AI 인사이트 - 태그 변경 시 새로 분석 */}
           <InsightCard
-            title="AI Market Opportunity Analysis"
+            key={`insight-${selectedTags.join('-')}`}
+            title={selectedTags.length > 0
+              ? `AI 분석: ${selectedTags.join(', ')} 태그 기회`
+              : "AI Market Opportunity Analysis"}
             onGenerate={generateOpportunityInsight}
           />
 
