@@ -17,6 +17,7 @@ import {
   X,
   BarChart3,
   HelpCircle,
+  CalendarDays,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -90,7 +91,14 @@ const navItems: NavItem[] = [
     label: '고급 분석',
     labelKr: '고급 분석',
     icon: BarChart3,
-    tooltip: '리텐션, 변동성, 포지셔닝, 이벤트 캘린더 등 심층 분석',
+    tooltip: '리텐션, 변동성, 포지셔닝 등 심층 분석',
+  },
+  {
+    href: '/calendar',
+    label: '이벤트 캘린더',
+    labelKr: '이벤트 캘린더',
+    icon: CalendarDays,
+    tooltip: 'Steam 세일, 페스티벌, 시상식 등 주요 이벤트 일정',
   },
 ];
 

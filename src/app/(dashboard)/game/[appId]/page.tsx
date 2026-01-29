@@ -381,7 +381,7 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
                             <Badge className="bg-green-500 mr-1 sm:mr-2 text-xs">-{game.price.discountPercent}%</Badge>
                           )}
                           {game.price?.finalFormatted ||
-                           (game.price?.final ? `$${game.price.final.toFixed(2)}` : 'N/A')}
+                           (game.price?.final ? `$${(game.price.final / 100).toFixed(2)}` : 'N/A')}
                         </>
                       )}
                     </p>

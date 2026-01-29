@@ -1,17 +1,21 @@
 // 포맷터 유틸리티 함수
 
 /**
- * 숫자를 K, M, B 단위로 포맷
+ * 숫자를 포맷 (기본: 콤마 구분 자연수)
+ * @param num - 포맷할 숫자
+ * @param compact - true면 K, M, B 단위 사용, false면 전체 숫자 표시 (기본값: false)
  */
-export function formatNumber(num: number): string {
-  if (num >= 1_000_000_000) {
-    return (num / 1_000_000_000).toFixed(1) + 'B';
-  }
-  if (num >= 1_000_000) {
-    return (num / 1_000_000).toFixed(1) + 'M';
-  }
-  if (num >= 1_000) {
-    return (num / 1_000).toFixed(1) + 'K';
+export function formatNumber(num: number, compact: boolean = false): string {
+  if (compact) {
+    if (num >= 1_000_000_000) {
+      return (num / 1_000_000_000).toFixed(1) + 'B';
+    }
+    if (num >= 1_000_000) {
+      return (num / 1_000_000).toFixed(1) + 'M';
+    }
+    if (num >= 1_000) {
+      return (num / 1_000).toFixed(1) + 'K';
+    }
   }
   return num.toLocaleString();
 }

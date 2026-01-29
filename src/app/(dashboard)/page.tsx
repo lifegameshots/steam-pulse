@@ -27,8 +27,40 @@ import {
   Trophy,
   Tag,
   Flame,
+  CalendarDays,
+  Target,
+  Award,
+  ChevronRight,
 } from 'lucide-react';
 import Link from 'next/link';
+import {
+  getCurrentEvents,
+  getUpcomingEvents,
+  getDaysUntilEvent,
+  type SteamEvent
+} from '@/lib/data/steamEvents';
+
+// 이벤트 타입 아이콘
+function getEventTypeIcon(type: SteamEvent['type']) {
+  switch (type) {
+    case 'sale': return <Target className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />;
+    case 'festival': return <Sparkles className="h-3 w-3 sm:h-4 sm:w-4 text-cyan-500" />;
+    case 'award': return <Award className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-500" />;
+    case 'showcase': return <Users className="h-3 w-3 sm:h-4 sm:w-4 text-purple-500" />;
+    default: return <CalendarDays className="h-3 w-3 sm:h-4 sm:w-4" />;
+  }
+}
+
+// 임팩트 뱃지 색상
+function getImpactColor(impact: SteamEvent['impact']): string {
+  switch (impact) {
+    case 'critical': return 'bg-red-500';
+    case 'high': return 'bg-orange-500';
+    case 'medium': return 'bg-blue-500';
+    case 'low': return 'bg-gray-500';
+    default: return 'bg-gray-400';
+  }
+}
 
 // 인기 게임 AppID (CCU 조회용)
 const POPULAR_GAMES = [
@@ -150,6 +182,10 @@ export default function DashboardPage() {
   // 현재 시간 (CCU용)
   const [now, setNow] = useState<string>('');
 
+  // 이벤트 캘린더 데이터
+  const currentEvents = useMemo(() => getCurrentEvents(), []);
+  const upcomingEvents = useMemo(() => getUpcomingEvents(30), []);
+
 useEffect(() => {
   setNow(new Date().toISOString());
 }, []);
@@ -232,6 +268,82 @@ useEffect(() => {
           </CardContent>
         </Card>
       )}
+
+      {/* 이벤트 캘린더 카드 */}
+      <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-950/30 dark:to-purple-950/30 border-indigo-200 dark:border-indigo-800">
+        <CardHeader className="px-4 sm:px-6 pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-500" />
+              이벤트 캘린더
+            </CardTitle>
+            <Link href="/calendar">
+              <Button variant="ghost" size="sm" className="text-xs gap-1">
+                전체 보기
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 sm:px-6">
+          <div className="space-y-3">
+            {/* 현재 진행 중인 이벤트 */}
+            {currentEvents.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-2 flex items-center gap-1">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  진행 중
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {currentEvents.slice(0, 3).map((event) => (
+                    <div
+                      key={event.id}
+                      className="flex items-center gap-2 px-3 py-2 bg-green-100 dark:bg-green-900/40 rounded-lg"
+                    >
+                      {getEventTypeIcon(event.type)}
+                      <span className="text-xs sm:text-sm font-medium">{event.nameKr}</span>
+                      <Badge className={`${getImpactColor(event.impact)} text-xs`}>
+                        {event.impact === 'critical' ? '필수' : event.impact === 'high' ? '높음' : '보통'}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 다가오는 이벤트 */}
+            {upcomingEvents.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-2">
+                  30일 내 예정
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {upcomingEvents.slice(0, 4).map((event) => {
+                    const daysLeft = getDaysUntilEvent(event);
+                    return (
+                      <div
+                        key={event.id}
+                        className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 rounded-lg border"
+                      >
+                        {getEventTypeIcon(event.type)}
+                        <span className="text-xs sm:text-sm font-medium">{event.nameKr}</span>
+                        <Badge variant="outline" className="text-xs">
+                          D-{daysLeft}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 이벤트가 없는 경우 */}
+            {currentEvents.length === 0 && upcomingEvents.length === 0 && (
+              <p className="text-sm text-muted-foreground">현재 예정된 이벤트가 없습니다.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* 섹션 1: 동접자 TOP 10 */}
       <Card>
