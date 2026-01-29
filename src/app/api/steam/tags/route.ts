@@ -4,9 +4,9 @@ import { CACHE_TTL } from '@/lib/utils/constants';
 
 const STEAM_SPY_API = 'https://steamspy.com/api.php';
 
-// Steam 인기 태그 목록 (SteamSpy tag ID 매핑)
+// Steam 인기 태그 목록 (SteamSpy tag ID 매핑) - 확장된 버전
 export const POPULAR_TAGS: Record<string, number> = {
-  // 장르
+  // 장르 (Genre)
   'Action': 19,
   'Adventure': 21,
   'RPG': 122,
@@ -17,8 +17,10 @@ export const POPULAR_TAGS: Record<string, number> = {
   'Shooter': 1774,
   'Racing': 699,
   'Sports': 701,
+  'Fighting': 1743,
+  'Stealth': 1687,
 
-  // 테마/스타일
+  // 테마/스타일 (Theme)
   'Indie': 492,
   'Casual': 597,
   'Horror': 1667,
@@ -29,8 +31,16 @@ export const POPULAR_TAGS: Record<string, number> = {
   'Anime': 4085,
   'Sci-fi': 3942,
   'Fantasy': 4608,
+  'Cyberpunk': 4115,
+  'Post-apocalyptic': 3835,
+  'Medieval': 4172,
+  'Retro': 4004,
+  '2D': 3871,
+  '3D': 4191,
+  'First-Person': 3839,
+  'Third Person': 1697,
 
-  // 게임플레이
+  // 게임플레이 (Gameplay)
   'Roguelike': 1716,
   'Roguelite': 1716,
   'Deckbuilder': 32322,
@@ -41,8 +51,16 @@ export const POPULAR_TAGS: Record<string, number> = {
   'Building': 1643,
   'Management': 12472,
   'Automation': 255534,
+  'Hack and Slash': 1646,
+  'Bullet Hell': 4106,
+  'Tactical': 1708,
+  'Base Building': 7332,
+  'Card Game': 1666,
+  'Point & Click': 1698,
+  'Exploration': 3834,
+  'Resource Management': 8945,
 
-  // 멀티플레이
+  // 멀티플레이 (Multiplayer)
   'Singleplayer': 4182,
   'Multiplayer': 3859,
   'Co-op': 1685,
@@ -50,16 +68,23 @@ export const POPULAR_TAGS: Record<string, number> = {
   'Online Co-Op': 3843,
   'Local Co-Op': 7368,
   'MMO': 128,
+  'MMORPG': 1754,
+  'Battle Royale': 176981,
+  'Competitive': 3878,
 
-  // 분위기
+  // 분위기/스타일 (Mood)
   'Relaxing': 1654,
   'Cozy': 97376,
   'Dark': 1721,
   'Cute': 4726,
   'Funny': 4136,
   'Atmospheric': 4166,
+  'Story Rich': 1742,
+  'Mystery': 5716,
+  'Difficult': 4026,
+  'Fast-Paced': 1734,
 
-  // 특수
+  // 특수 카테고리 (Special)
   'Early Access': 493,
   'Free to Play': 113,
   'VR': 21978,
@@ -70,6 +95,19 @@ export const POPULAR_TAGS: Record<string, number> = {
   'City Builder': 1643,
   'Farming Sim': 87918,
   'Vampire Survivors-like': 1023537,
+  'JRPG': 4434,
+  'Action RPG': 4231,
+  'Dungeon Crawler': 1711,
+  'Grand Strategy': 4364,
+  '4X': 1670,
+  'RTS': 1676,
+  'Dating Sim': 9551,
+  'Life Sim': 10235,
+  'Fishing': 17894,
+  'Music': 1621,
+  'Rhythm': 5608,
+  'Space': 1755,
+  'Zombies': 1659,
 };
 
 interface SteamSpyTagGame {
@@ -320,15 +358,16 @@ export async function GET(request: Request) {
   const listTags = searchParams.get('list');
 
   try {
-    // 태그 목록 반환
+    // 태그 목록 반환 - 확장된 카테고리
     if (listTags === 'true') {
       const tagCategories = {
-        genre: ['Action', 'Adventure', 'RPG', 'Strategy', 'Simulation', 'Puzzle', 'Platformer', 'Shooter', 'Racing', 'Sports'],
-        theme: ['Indie', 'Casual', 'Horror', 'Survival', 'Open World', 'Sandbox', 'Pixel Graphics', 'Anime', 'Sci-fi', 'Fantasy'],
-        gameplay: ['Roguelike', 'Roguelite', 'Deckbuilder', 'Tower Defense', 'Turn-Based', 'Real-Time', 'Crafting', 'Building', 'Management', 'Automation'],
-        multiplayer: ['Singleplayer', 'Multiplayer', 'Co-op', 'PvP', 'Online Co-Op', 'Local Co-Op', 'MMO'],
-        mood: ['Relaxing', 'Cozy', 'Dark', 'Cute', 'Funny', 'Atmospheric'],
-        special: ['Early Access', 'Free to Play', 'VR', 'Souls-like', 'Metroidvania', 'Visual Novel', 'City Builder', 'Farming Sim', 'Vampire Survivors-like'],
+        genre: ['Action', 'Adventure', 'RPG', 'Strategy', 'Simulation', 'Puzzle', 'Platformer', 'Shooter', 'Racing', 'Sports', 'Fighting', 'Stealth'],
+        theme: ['Indie', 'Casual', 'Horror', 'Survival', 'Open World', 'Sandbox', 'Pixel Graphics', 'Anime', 'Sci-fi', 'Fantasy', 'Cyberpunk', 'Post-apocalyptic', 'Medieval', 'Retro'],
+        perspective: ['2D', '3D', 'First-Person', 'Third Person'],
+        gameplay: ['Roguelike', 'Roguelite', 'Deckbuilder', 'Tower Defense', 'Turn-Based', 'Real-Time', 'Crafting', 'Building', 'Management', 'Automation', 'Hack and Slash', 'Bullet Hell', 'Tactical', 'Base Building', 'Card Game', 'Point & Click', 'Exploration', 'Resource Management'],
+        multiplayer: ['Singleplayer', 'Multiplayer', 'Co-op', 'PvP', 'Online Co-Op', 'Local Co-Op', 'MMO', 'MMORPG', 'Battle Royale', 'Competitive'],
+        mood: ['Relaxing', 'Cozy', 'Dark', 'Cute', 'Funny', 'Atmospheric', 'Story Rich', 'Mystery', 'Difficult', 'Fast-Paced'],
+        special: ['Early Access', 'Free to Play', 'VR', 'Souls-like', 'Metroidvania', 'Visual Novel', 'City Builder', 'Farming Sim', 'Vampire Survivors-like', 'JRPG', 'Action RPG', 'Dungeon Crawler', 'Grand Strategy', '4X', 'RTS', 'Dating Sim', 'Life Sim', 'Fishing', 'Music', 'Rhythm', 'Space', 'Zombies'],
       };
 
       return NextResponse.json({
