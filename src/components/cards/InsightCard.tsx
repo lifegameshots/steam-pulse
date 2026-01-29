@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
+import { Sparkles, RefreshCw, AlertCircle, Settings } from 'lucide-react';
 
 interface InsightCardProps {
   title: string;
@@ -17,16 +17,23 @@ export function InsightCard({ title, onGenerate, initialInsight, icon }: Insight
   const [insight, setInsight] = useState<string | null>(initialInsight || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isConfigError, setIsConfigError] = useState(false);
 
   const handleGenerate = async () => {
     setLoading(true);
     setError(null);
-    
+    setIsConfigError(false);
+
     try {
       const result = await onGenerate();
       setInsight(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate insight');
+      const message = err instanceof Error ? err.message : 'Failed to generate insight';
+      setError(message);
+      // API 키 미설정 에러인지 확인
+      if (message.includes('API') || message.includes('설정') || message.includes('config')) {
+        setIsConfigError(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -119,11 +126,22 @@ export function InsightCard({ title, onGenerate, initialInsight, icon }: Insight
         )}
 
         {error && (
-          <div className="flex items-start gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
-            <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+          <div className={`flex items-start gap-2 p-3 rounded-lg ${isConfigError ? 'text-amber-700 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-300' : 'text-red-600 bg-red-50 dark:bg-red-950/30 dark:text-red-300'}`}>
+            {isConfigError ? (
+              <Settings className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+            )}
             <div>
-              <p className="font-medium">인사이트 생성 실패</p>
-              <p className="text-sm text-red-500">{error}</p>
+              <p className="font-medium">
+                {isConfigError ? 'AI 기능 설정 필요' : '인사이트 생성 실패'}
+              </p>
+              <p className={`text-sm ${isConfigError ? 'text-amber-600 dark:text-amber-400' : 'text-red-500 dark:text-red-400'}`}>{error}</p>
+              {isConfigError && (
+                <p className="text-xs mt-2 text-gray-500">
+                  Gemini API 키를 Vercel 환경 변수에 추가해주세요.
+                </p>
+              )}
             </div>
           </div>
         )}
