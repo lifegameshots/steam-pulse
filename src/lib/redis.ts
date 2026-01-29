@@ -3,13 +3,32 @@
 import { Redis } from '@upstash/redis';
 import { CACHE_TTL } from './utils/constants';
 
-// Redis 클라이언트 싱글톤
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+// 환경 변수 검증
+const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-export { redis };
+// Redis 사용 가능 여부
+export const isRedisConfigured = Boolean(REDIS_URL && REDIS_TOKEN);
+
+// Redis 클라이언트 싱글톤 (조건부 생성)
+const realRedis = isRedisConfigured
+  ? new Redis({
+      url: REDIS_URL!,
+      token: REDIS_TOKEN!,
+    })
+  : null;
+
+// No-op Redis 프록시 (Redis 미설정시 사용)
+const noopRedis = {
+  get: async () => null,
+  set: async () => 'OK',
+  setex: async () => 'OK',
+  del: async () => 0,
+  keys: async () => [],
+};
+
+// 실제 내보내기 (Redis 또는 no-op)
+export const redis = realRedis ?? (noopRedis as unknown as Redis);
 
 /**
  * 캐시에서 데이터 가져오기 (없으면 fetcher 실행 후 저장)
@@ -75,14 +94,14 @@ export const cacheKeys = {
   steamNews: (appId: number) => `steam:news:${appId}`,
   steamFeatured: () => 'steam:featured',
   steamSearch: (query: string) => `steam:search:${query}`,
-  
+
   // SteamSpy 데이터
   steamSpy: (appId: number) => `steamspy:${appId}`,
-  
+
   // CCU 데이터
   ccuTop: () => 'ccu:top',
   ccuApp: (appId: number) => `ccu:app:${appId}`,
-  
+
   // AI 인사이트
   insightTrending: () => 'insight:trending',
   insightGame: (appId: number) => `insight:game:${appId}`,
@@ -90,7 +109,7 @@ export const cacheKeys = {
   insightCompetitor: (publisher: string) => `insight:competitor:${publisher}`,
   insightHype: (appId: number) => `insight:hype:${appId}`,
   insightWatchlist: (userId: string) => `insight:watchlist:${userId}`,
-  
+
   // 유저 관련
   userCooldown: (userId: string, type: string) => `cooldown:${userId}:${type}`,
 };
@@ -104,17 +123,17 @@ export async function checkUserCooldown(
   cooldownMs: number
 ): Promise<{ allowed: boolean; remainingMs: number }> {
   const key = cacheKeys.userCooldown(userId, type);
-  
+
   try {
     const lastRequest = await redis.get<number>(key);
-    
+
     if (lastRequest) {
       const elapsed = Date.now() - lastRequest;
       if (elapsed < cooldownMs) {
         return { allowed: false, remainingMs: cooldownMs - elapsed };
       }
     }
-    
+
     // 쿨다운 갱신
     await redis.setex(key, Math.ceil(cooldownMs / 1000), Date.now());
     return { allowed: true, remainingMs: 0 };

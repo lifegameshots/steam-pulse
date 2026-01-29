@@ -81,18 +81,77 @@ export function useWatchlist() {
     staleTime: 1000 * 60 * 5, // 5분
   });
   
-  // 추가 mutation
+  // 추가 mutation (낙관적 업데이트)
   const addMutation = useMutation({
     mutationFn: addToWatchlist,
-    onSuccess: () => {
+    onMutate: async (newItem) => {
+      // 진행 중인 쿼리 취소
+      await queryClient.cancelQueries({ queryKey: ['watchlist'] });
+
+      // 이전 데이터 스냅샷
+      const previousWatchlist = queryClient.getQueryData<WatchlistItem[]>(['watchlist']);
+
+      // 낙관적 업데이트
+      queryClient.setQueryData<WatchlistItem[]>(['watchlist'], (old = []) => [
+        ...old,
+        {
+          id: `temp-${Date.now()}`,
+          user_id: '',
+          app_id: newItem.appId,
+          app_name: newItem.appName || null,
+          header_image: newItem.headerImage || null,
+          added_at: new Date().toISOString(),
+          alerts_enabled: true,
+          alert_settings: {
+            ccu_spike: 30,
+            ccu_drop: 20,
+            review_spike: 50,
+            price_change: true,
+            update_news: true,
+            rating_change: 10,
+          },
+        },
+      ]);
+
+      return { previousWatchlist };
+    },
+    onError: (_err, _newItem, context) => {
+      // 에러 시 롤백
+      if (context?.previousWatchlist) {
+        queryClient.setQueryData(['watchlist'], context.previousWatchlist);
+      }
+    },
+    onSettled: () => {
+      // 완료 후 서버 데이터와 동기화
       queryClient.invalidateQueries({ queryKey: ['watchlist'] });
     },
   });
-  
-  // 제거 mutation
+
+  // 제거 mutation (낙관적 업데이트)
   const removeMutation = useMutation({
     mutationFn: removeFromWatchlist,
-    onSuccess: () => {
+    onMutate: async (appIdToRemove) => {
+      // 진행 중인 쿼리 취소
+      await queryClient.cancelQueries({ queryKey: ['watchlist'] });
+
+      // 이전 데이터 스냅샷
+      const previousWatchlist = queryClient.getQueryData<WatchlistItem[]>(['watchlist']);
+
+      // 낙관적 업데이트 (즉시 제거)
+      queryClient.setQueryData<WatchlistItem[]>(['watchlist'], (old = []) =>
+        old.filter((item) => item.app_id !== appIdToRemove)
+      );
+
+      return { previousWatchlist };
+    },
+    onError: (_err, _appId, context) => {
+      // 에러 시 롤백
+      if (context?.previousWatchlist) {
+        queryClient.setQueryData(['watchlist'], context.previousWatchlist);
+      }
+    },
+    onSettled: () => {
+      // 완료 후 서버 데이터와 동기화
       queryClient.invalidateQueries({ queryKey: ['watchlist'] });
     },
   });

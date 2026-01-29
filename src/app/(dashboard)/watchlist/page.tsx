@@ -25,7 +25,7 @@ export default function WatchlistPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Star className="h-8 w-8 text-yellow-500" />
-            워치리스트
+            관심 목록
           </h1>
           <p className="text-muted-foreground mt-1">
             관심 게임을 추적하고 알림을 받으세요
@@ -59,7 +59,7 @@ export default function WatchlistPage() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Star className="h-8 w-8 text-yellow-500 fill-yellow-500" />
-            워치리스트
+            관심 목록
           </h1>
           <p className="text-muted-foreground mt-1">
             {watchlist.length > 0 

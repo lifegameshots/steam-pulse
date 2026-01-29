@@ -67,11 +67,14 @@ export const TRENDING_WEIGHTS = {
 
 // 캐시 TTL (초)
 export const CACHE_TTL = {
-  CCU: 300,              // 5분
+  CCU: 60,               // 1분 (실시간 데이터)
+  TOP_GAMES: 300,        // 5분
   GAME_DETAILS: 3600,    // 1시간
   REVIEWS: 1800,         // 30분
-  FEATURED: 900,         // 15분
+  FEATURED: 600,         // 10분
+  SEARCH: 300,           // 5분
   STEAMSPY: 3600,        // 1시간
+  NEWS: 900,             // 15분
   INSIGHT_TRENDING: 3600,     // 1시간
   INSIGHT_OPPORTUNITY: 7200,  // 2시간
   INSIGHT_GAME: 21600,        // 6시간

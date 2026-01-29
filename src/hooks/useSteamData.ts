@@ -142,6 +142,7 @@ export function useCCU(appId: number) {
       return res.json();
     },
     enabled: appId > 0,
+    staleTime: 1000 * 60, // 1분 (실시간 CCU)
   });
 }
 
@@ -154,6 +155,7 @@ export function useFeatured() {
       if (!res.ok) throw new Error('Failed to fetch featured');
       return res.json();
     },
+    staleTime: 1000 * 60 * 10, // 10분 (피처드 데이터는 자주 변경 안 됨)
   });
 }
 
@@ -167,6 +169,7 @@ export function useSearch(query: string) {
       return res.json();
     },
     enabled: query.length > 0,
+    staleTime: 1000 * 60 * 5, // 5분 (검색 결과는 자주 안 변함)
   });
 }
 
@@ -180,6 +183,7 @@ export function useAppDetails(appId: string | number) {
       return res.json();
     },
     enabled: !!appId,
+    staleTime: 1000 * 60 * 30, // 30분 (게임 상세는 거의 변경 안 됨)
   });
 }
 
@@ -196,6 +200,7 @@ export function useGameReviews(appId: string | number) {
       return res.json();
     },
     enabled: !!appId,
+    staleTime: 1000 * 60 * 15, // 15분 (리뷰는 중간 속도로 변경)
   });
 }
 
@@ -209,7 +214,7 @@ export function useTopGames() {
       const res = await fetch('/api/steam/ccu');
       if (!res.ok) throw new Error('Failed to fetch top games');
       const data = await res.json();
-      
+
       // GlobalCCU 응답을 TopGamesData 형식으로 변환
       return {
         response: {
@@ -222,30 +227,25 @@ export function useTopGames() {
         }
       };
     },
-    staleTime: 1000 * 60 * 5, // 5분
+    staleTime: 1000 * 60 * 2, // 2분 (CCU 순위는 자주 변경)
   });
 }
 
-// 인기 게임 CCU 여러 개 조회 (병렬)
+// 인기 게임 CCU 여러 개 조회 (배치 API 사용 - N+1 방지)
 export function useMultipleCCU(appIds: number[]) {
   return useQuery({
     queryKey: ['multipleCCU', appIds],
     queryFn: async () => {
-      const results = await Promise.all(
-        appIds.map(async (appId) => {
-          try {
-            const res = await fetch(`/api/steam/ccu?appId=${appId}`);
-            if (!res.ok) return { appId, ccu: 0 };
-            const data: CCUData = await res.json();
-            return { appId, ccu: data.playerCount || 0 };
-          } catch {
-            return { appId, ccu: 0 };
-          }
-        })
-      );
-      return results;
+      // 단일 배치 요청으로 모든 CCU 조회
+      const res = await fetch(`/api/steam/ccu?appIds=${appIds.join(',')}`);
+      if (!res.ok) {
+        return appIds.map(appId => ({ appId, ccu: 0 }));
+      }
+      const data = await res.json();
+      return data.results as { appId: number; ccu: number }[];
     },
     enabled: appIds.length > 0,
+    staleTime: 1000 * 60, // 1분 (CCU는 실시간 데이터)
   });
 }
 
@@ -269,6 +269,6 @@ export function useGlobalCCU() {
       if (!res.ok) throw new Error('Failed to fetch global CCU');
       return res.json();
     },
-    staleTime: 1000 * 60 * 5, // 5분
+    staleTime: 1000 * 60, // 1분 (실시간 CCU 데이터)
   });
 }
