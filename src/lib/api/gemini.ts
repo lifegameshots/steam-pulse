@@ -46,10 +46,15 @@ interface GeminiResponse {
   };
 }
 
+// API 키 설정 여부 확인
+export function isGeminiConfigured(): boolean {
+  return GEMINI_KEYS.length > 0;
+}
+
 // API 키 선택 (Redis 캐시 + 라운드 로빈으로 Supabase 호출 최소화)
 async function selectApiKey(): Promise<{ key: string; index: number }> {
   if (GEMINI_KEYS.length === 0) {
-    throw new Error('No Gemini API keys configured');
+    throw new Error('GEMINI_API_KEY가 설정되지 않았습니다. Vercel 환경 변수에 GEMINI_API_KEY_1을 추가해주세요.');
   }
 
   const cacheKey = getUsageCacheKey();
