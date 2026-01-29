@@ -10,7 +10,7 @@ import {
   Gift, DollarSign, Package, ChevronDown, ChevronUp,
   ExternalLink, Sparkles, Filter, ArrowUpDown, Music,
   Palette, Box, CreditCard, RefreshCw, Search, Info,
-  ShoppingCart, Coins, Gamepad2
+  ShoppingCart, Coins, Gamepad2, Newspaper, Database
 } from 'lucide-react';
 import { InsightCard } from '@/components/cards/InsightCard';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -33,6 +33,29 @@ interface DLCItem {
   price: number | null;
   priceFormatted: string;
   type: string;
+}
+
+// 뉴스에서 추출된 상품 타입
+interface NewsProduct {
+  name: string;
+  type: 'battlepass' | 'skin' | 'bundle' | 'event' | 'currency' | 'subscription' | 'other';
+  price: string | null;
+  description: string;
+  newsDate: string;
+  newsTitle: string;
+}
+
+interface NewsProductsResponse {
+  appId: number;
+  gameName: string;
+  products: NewsProduct[];
+  totalNewsAnalyzed: number;
+  source: {
+    news: string;
+    analysis: string;
+  };
+  timestamp: string;
+  cached: boolean;
 }
 
 // 태그 카테고리 - Steam에서 실제 사용되는 인기 태그들
@@ -74,6 +97,17 @@ const DLC_TYPE_CONFIG: Record<string, { icon: typeof Package; color: string; lab
   unknown: { icon: Package, color: 'text-gray-500', label: '기타' },
 };
 
+// 뉴스 상품 유형 아이콘 및 색상
+const NEWS_PRODUCT_TYPE_CONFIG: Record<string, { icon: typeof Package; color: string; label: string }> = {
+  battlepass: { icon: Gamepad2, color: 'text-purple-500', label: '배틀패스' },
+  skin: { icon: Palette, color: 'text-pink-500', label: '스킨' },
+  bundle: { icon: Box, color: 'text-orange-500', label: '번들' },
+  event: { icon: Sparkles, color: 'text-yellow-500', label: '이벤트' },
+  currency: { icon: Coins, color: 'text-amber-500', label: '화폐' },
+  subscription: { icon: CreditCard, color: 'text-green-500', label: '구독' },
+  other: { icon: Package, color: 'text-gray-500', label: '기타' },
+};
+
 // 정렬 옵션
 type SortOption = 'price-asc' | 'price-desc' | 'name' | 'type';
 
@@ -108,6 +142,20 @@ export default function F2PPage() {
     },
     enabled: !!expandedGame,
     staleTime: 1000 * 60 * 10, // 10분
+  });
+
+  // 선택된 게임의 뉴스 기반 상품 정보 가져오기
+  const expandedGameName = f2pGames?.find(g => g.appId === expandedGame)?.name || '';
+  const { data: newsProductsData, isLoading: newsProductsLoading, refetch: refetchNewsProducts } = useQuery<NewsProductsResponse>({
+    queryKey: ['f2p-news-products', expandedGame],
+    queryFn: async () => {
+      if (!expandedGame) return null;
+      const res = await fetch(`/api/steam/f2p/news-products?appId=${expandedGame}&gameName=${encodeURIComponent(expandedGameName)}`);
+      if (!res.ok) throw new Error('Failed to fetch news products');
+      return res.json();
+    },
+    enabled: !!expandedGame && !!expandedGameName,
+    staleTime: 1000 * 60 * 30, // 30분
   });
 
   // 카테고리 토글
@@ -552,6 +600,7 @@ export default function F2PPage() {
                               })}
                             </div>
 
+
                             {/* AI 분석 */}
                             <InsightCard
                               key={`insight-${expandedGame}`}
@@ -631,6 +680,108 @@ export default function F2PPage() {
                             </Button>
                           </div>
                         )}
+
+                        {/* 뉴스 기반 상품 정보 섹션 */}
+                        <div className="border-t pt-4 mt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="font-medium text-sm flex items-center gap-2">
+                              <Newspaper className="h-4 w-4 text-blue-500" />
+                              뉴스에서 발견된 상품 정보
+                            </h4>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => refetchNewsProducts()}
+                              disabled={newsProductsLoading}
+                              className="h-7 text-xs"
+                            >
+                              {newsProductsLoading ? (
+                                <RefreshCw className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <RefreshCw className="h-3 w-3" />
+                              )}
+                            </Button>
+                          </div>
+
+                          {newsProductsLoading ? (
+                            <div className="space-y-2">
+                              <Skeleton className="h-12 w-full" />
+                              <Skeleton className="h-12 w-full" />
+                            </div>
+                          ) : newsProductsData?.products && newsProductsData.products.length > 0 ? (
+                            <div className="space-y-3">
+                              {/* 상품 목록 */}
+                              <div className="space-y-2 max-h-60 overflow-y-auto">
+                                {newsProductsData.products.map((product, idx) => {
+                                  const config = NEWS_PRODUCT_TYPE_CONFIG[product.type] || NEWS_PRODUCT_TYPE_CONFIG.other;
+                                  const ProductIcon = config.icon;
+
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className="p-3 bg-background rounded-lg border"
+                                    >
+                                      <div className="flex items-start gap-3">
+                                        <ProductIcon className={`h-4 w-4 flex-shrink-0 mt-0.5 ${config.color}`} />
+                                        <div className="flex-1 min-w-0">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="font-medium text-sm">{product.name}</span>
+                                            <Badge variant="secondary" className="text-[10px]">
+                                              {config.label}
+                                            </Badge>
+                                            {product.price && (
+                                              <Badge variant="outline" className="text-[10px] text-green-600">
+                                                {product.price}
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                            {product.description}
+                                          </p>
+                                          <p className="text-[10px] text-muted-foreground mt-1">
+                                            {product.newsDate} • {product.newsTitle.slice(0, 50)}...
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* 출처 표시 */}
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t flex-wrap">
+                                <Database className="h-3 w-3" />
+                                <span>출처:</span>
+                                <Badge variant="outline" className="text-[10px] gap-1">
+                                  <ExternalLink className="h-2.5 w-2.5" />
+                                  Steam News
+                                </Badge>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground">
+                                최근 {newsProductsData.totalNewsAnalyzed}개 뉴스 분석
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="p-4 bg-muted/50 rounded-lg text-center">
+                              <Newspaper className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                              <p className="text-sm text-muted-foreground">
+                                최근 뉴스에서 상품 정보를 찾지 못했습니다
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                게임 공식 뉴스에 상품 관련 내용이 없거나, AI가 추출하지 못했을 수 있습니다
+                              </p>
+                              {newsProductsData?.source && (
+                                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-3">
+                                  <Database className="h-3 w-3" />
+                                  <span>데이터 출처:</span>
+                                  <Badge variant="outline" className="text-[10px]">
+                                    {newsProductsData.source.news}
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -642,6 +793,7 @@ export default function F2PPage() {
                   상위 30개 게임만 표시됩니다. 필터를 사용하여 원하는 게임을 찾아보세요.
                 </p>
               )}
+
             </div>
           )}
         </CardContent>

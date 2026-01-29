@@ -1,14 +1,17 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   BarChart3, TrendingUp, Activity, Map, Calendar,
   ChevronRight, Clock, AlertCircle, CheckCircle2, Sparkles,
-  Users, Target, Zap, Award
+  Users, Target, Zap, Award, TrendingDown, Database, ExternalLink,
+  LineChart
 } from 'lucide-react';
 import { useGlobalCCU, useFeatured } from '@/hooks/useSteamData';
 import { formatNumber } from '@/lib/utils/formatters';
@@ -25,7 +28,18 @@ import {
 import { PageHeader } from '@/components/layout/PageHeader';
 import Link from 'next/link';
 
-type TabType = 'retention' | 'volatility' | 'positioning' | 'events';
+type TabType = 'retention' | 'volatility' | 'positioning' | 'events' | 'ccu-trends';
+
+// CCU 트렌드 데이터 타입
+interface GameTrend {
+  appId: number;
+  name: string;
+  currentCCU: number;
+  previousCCU: number;
+  changePercent: number;
+  trend: 'rising' | 'falling' | 'stable';
+  history: Array<{ date: string; ccu: number }>;
+}
 
 // 모의 리텐션 데이터 생성
 function generateMockRetentionData(): RetentionInput[] {
@@ -154,6 +168,26 @@ function getImpactBadge(impact: SteamEvent['impact']): { label: string; classNam
 export default function AnalyticsPage() {
   const [activeTab, setActiveTab] = useState<TabType>('retention');
   const [eventFilter, setEventFilter] = useState<SteamEvent['type'] | 'all'>('all');
+  const [ccuPeriod, setCcuPeriod] = useState<7 | 14 | 30>(30);
+
+  // CCU 트렌드 데이터 가져오기
+  const { data: ccuTrendsData, isLoading: ccuTrendsLoading } = useQuery<{
+    type: string;
+    data: GameTrend[];
+    period: string;
+    source: string;
+    timestamp: string;
+    cached: boolean;
+  }>({
+    queryKey: ['ccu-trends', ccuPeriod],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/ccu-history?type=top&days=${ccuPeriod}&limit=20`);
+      if (!res.ok) throw new Error('Failed to fetch CCU trends');
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 30, // 30분
+    enabled: activeTab === 'ccu-trends',
+  });
 
   // 데이터 생성
   const retentionData = useMemo(() => {
@@ -203,7 +237,7 @@ export default function AnalyticsPage() {
 
       {/* 탭 네비게이션 */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)} className="w-full">
-        <TabsList className="w-full grid grid-cols-4">
+        <TabsList className="w-full grid grid-cols-5">
           <TabsTrigger value="retention" className="text-xs sm:text-sm min-h-[40px] gap-1">
             <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">리텐션</span>
@@ -211,6 +245,10 @@ export default function AnalyticsPage() {
           <TabsTrigger value="volatility" className="text-xs sm:text-sm min-h-[40px] gap-1">
             <Zap className="h-3 w-3 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">변동성</span>
+          </TabsTrigger>
+          <TabsTrigger value="ccu-trends" className="text-xs sm:text-sm min-h-[40px] gap-1">
+            <LineChart className="h-3 w-3 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">CCU 트렌드</span>
           </TabsTrigger>
           <TabsTrigger value="positioning" className="text-xs sm:text-sm min-h-[40px] gap-1">
             <Map className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -402,6 +440,200 @@ export default function AnalyticsPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* CCU 트렌드 탭 */}
+      {activeTab === 'ccu-trends' && (
+        <div className="space-y-4">
+          {/* 설명 카드 */}
+          <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
+            <CardContent className="pt-4 px-4 sm:px-6">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <LineChart className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">
+                  <p className="font-medium mb-1">일일 CCU 트렌드 분석</p>
+                  <p className="mt-1">매일 KST 00:00에 자동 수집된 TOP 50 게임의 동시접속자 추이를 분석합니다.</p>
+                  <p className="hidden sm:block mt-1">급상승/급하락 게임을 빠르게 파악하고 시장 동향을 모니터링하세요.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 기간 선택 */}
+          <div className="flex flex-wrap gap-2">
+            {([7, 14, 30] as const).map((days) => (
+              <Button
+                key={days}
+                variant={ccuPeriod === days ? 'default' : 'outline'}
+                size="sm"
+                className="text-xs"
+                onClick={() => setCcuPeriod(days)}
+              >
+                {days}일
+              </Button>
+            ))}
+          </div>
+
+          {ccuTrendsLoading ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-20 w-full" />
+              ))}
+            </div>
+          ) : ccuTrendsData?.data && ccuTrendsData.data.length > 0 ? (
+            <>
+              {/* 급상승/급하락 요약 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Card className="border-green-200 dark:border-green-800">
+                  <CardHeader className="px-4 sm:px-6 pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base text-green-600 dark:text-green-400">
+                      <TrendingUp className="h-4 w-4" />
+                      급상승 게임
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 sm:px-6">
+                    <div className="space-y-2">
+                      {ccuTrendsData.data
+                        .filter(g => g.trend === 'rising')
+                        .slice(0, 5)
+                        .map((game) => (
+                          <div key={game.appId} className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                            <span className="text-sm font-medium truncate flex-1">{game.name}</span>
+                            <Badge className="bg-green-500 ml-2">
+                              +{game.changePercent.toFixed(1)}%
+                            </Badge>
+                          </div>
+                        ))}
+                      {ccuTrendsData.data.filter(g => g.trend === 'rising').length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          급상승 게임이 없습니다
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-red-200 dark:border-red-800">
+                  <CardHeader className="px-4 sm:px-6 pb-2">
+                    <CardTitle className="flex items-center gap-2 text-base text-red-600 dark:text-red-400">
+                      <TrendingDown className="h-4 w-4" />
+                      급하락 게임
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 sm:px-6">
+                    <div className="space-y-2">
+                      {ccuTrendsData.data
+                        .filter(g => g.trend === 'falling')
+                        .slice(0, 5)
+                        .map((game) => (
+                          <div key={game.appId} className="flex items-center justify-between p-2 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                            <span className="text-sm font-medium truncate flex-1">{game.name}</span>
+                            <Badge className="bg-red-500 ml-2">
+                              {game.changePercent.toFixed(1)}%
+                            </Badge>
+                          </div>
+                        ))}
+                      {ccuTrendsData.data.filter(g => g.trend === 'falling').length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          급하락 게임이 없습니다
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* 전체 CCU 트렌드 목록 */}
+              <Card>
+                <CardHeader className="px-4 sm:px-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
+                    TOP 게임 CCU 트렌드 ({ccuPeriod}일)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 sm:px-6">
+                  <div className="space-y-2 sm:space-y-3">
+                    {ccuTrendsData.data.slice(0, 15).map((game, index) => (
+                      <Link
+                        key={game.appId}
+                        href={`/game/${game.appId}`}
+                        className="block"
+                      >
+                        <div className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border hover:bg-accent/50 active:bg-accent/70 transition-colors min-h-[72px]">
+                          {/* 순위 */}
+                          <div className="w-6 sm:w-8 text-center flex-shrink-0">
+                            <span className={`font-bold text-base sm:text-lg ${
+                              index < 3 ? 'text-blue-500' : 'text-muted-foreground'
+                            }`}>
+                              {index + 1}
+                            </span>
+                          </div>
+
+                          {/* 게임 정보 */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm sm:text-base truncate">{game.name}</p>
+                            <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
+                              <span>현재: {formatNumber(game.currentCCU)}</span>
+                              <span className="hidden sm:inline">이전: {formatNumber(game.previousCCU)}</span>
+                              <Badge className={`text-xs ${
+                                game.trend === 'rising' ? 'bg-green-500' :
+                                game.trend === 'falling' ? 'bg-red-500' : 'bg-gray-500'
+                              }`}>
+                                {game.trend === 'rising' ? '상승' :
+                                 game.trend === 'falling' ? '하락' : '안정'}
+                              </Badge>
+                            </div>
+                          </div>
+
+                          {/* 변화율 */}
+                          <div className="text-right flex-shrink-0">
+                            <p className={`text-lg sm:text-2xl font-bold ${
+                              game.changePercent > 0 ? 'text-green-500' :
+                              game.changePercent < 0 ? 'text-red-500' : 'text-gray-500'
+                            }`}>
+                              {game.changePercent > 0 ? '+' : ''}{game.changePercent.toFixed(1)}%
+                            </p>
+                            <p className="text-xs text-muted-foreground">변화율</p>
+                          </div>
+
+                          <ChevronRight className="h-4 w-4 text-muted-foreground hidden sm:block" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+
+                  {/* 출처 표시 */}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground pt-4 mt-4 border-t flex-wrap">
+                    <Database className="h-3 w-3" />
+                    <span>데이터 출처:</span>
+                    <Badge variant="outline" className="text-[10px] gap-1">
+                      <ExternalLink className="h-2.5 w-2.5" />
+                      일일 자동 수집 데이터
+                    </Badge>
+                    <span className="text-muted-foreground/60">
+                      • 수집 시간: 매일 KST 00:00
+                    </span>
+                    {ccuTrendsData.cached && (
+                      <Badge variant="secondary" className="text-[10px]">캐시됨</Badge>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <LineChart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  수집된 CCU 히스토리 데이터가 없습니다.
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Vercel Cron이 매일 KST 00:00에 데이터를 자동으로 수집합니다.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
