@@ -31,8 +31,10 @@ import {
   Target,
   Award,
   ChevronRight,
+  LayoutDashboard,
 } from 'lucide-react';
 import Link from 'next/link';
+import { PageHeader } from '@/components/layout/PageHeader';
 import {
   getCurrentEvents,
   getUpcomingEvents,
@@ -193,13 +195,13 @@ useEffect(() => {
   return (
     <div className="space-y-8">
       {/* 헤더 */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">시장 현황</h1>
-          <p className="text-sm text-muted-foreground">
-            Steam 마켓 실시간 현황을 한눈에 파악하세요
-          </p>
-        </div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <PageHeader
+          title="시장 현황"
+          description="Steam 마켓 실시간 현황을 한눈에 파악하세요"
+          icon={<LayoutDashboard className="h-5 w-5 sm:h-6 sm:w-6 text-blue-500" />}
+          pageName="시장 현황"
+        />
 
         {/* 검색 */}
         <form onSubmit={handleSearch} className="flex gap-2 w-full md:w-auto">

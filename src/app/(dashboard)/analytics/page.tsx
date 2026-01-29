@@ -22,6 +22,7 @@ import {
   getDaysUntilEvent,
   type SteamEvent
 } from '@/lib/data/steamEvents';
+import { PageHeader } from '@/components/layout/PageHeader';
 import Link from 'next/link';
 
 type TabType = 'retention' | 'volatility' | 'positioning' | 'events';
@@ -193,15 +194,12 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-500" />
-          고급 분석
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          시장 심층 분석으로 마케팅 전략을 수립하세요
-        </p>
-      </div>
+      <PageHeader
+        title="고급 분석"
+        description="시장 심층 분석으로 마케팅 전략을 수립하세요"
+        icon={<BarChart3 className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-500" />}
+        pageName="고급 분석"
+      />
 
       {/* 탭 네비게이션 */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabType)} className="w-full">

@@ -23,6 +23,7 @@ import {
   ArrowDownRight,
   Flame,
 } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import Link from 'next/link';
 
 // 가격 포맷 함수
@@ -144,15 +145,12 @@ export default function SalesPage() {
   return (
     <div className="space-y-8">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Tag className="h-8 w-8 text-green-500" />
-          세일 모니터
-        </h1>
-        <p className="text-muted-foreground">
-          현재 Steam에서 진행 중인 세일을 모니터링하세요
-        </p>
-      </div>
+      <PageHeader
+        title="세일 모니터"
+        description="현재 Steam에서 진행 중인 세일을 모니터링하세요"
+        icon={<Tag className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />}
+        pageName="세일 모니터"
+      />
 
       {/* 통계 카드 */}
       <div className="grid gap-4 md:grid-cols-4">

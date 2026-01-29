@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { formatNumber, formatDate } from '@/lib/utils/formatters';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 export default function WatchlistPage() {
   const { 
@@ -56,18 +57,15 @@ export default function WatchlistPage() {
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Star className="h-8 w-8 text-yellow-500 fill-yellow-500" />
-            관심 목록
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            {watchlist.length > 0 
-              ? `${watchlist.length}개의 게임을 추적 중`
-              : '관심 게임을 추가해보세요'
-            }
-          </p>
-        </div>
+        <PageHeader
+          title="관심 목록"
+          description={watchlist.length > 0
+            ? `${watchlist.length}개의 게임을 추적 중`
+            : '관심 게임을 추가해보세요'
+          }
+          icon={<Star className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 fill-yellow-500" />}
+          pageName="관심 목록"
+        />
       </div>
 
       {/* 빈 상태 */}

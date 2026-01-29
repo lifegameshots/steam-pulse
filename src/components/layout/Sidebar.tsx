@@ -37,6 +37,7 @@ interface NavItem {
   tooltip: string;
 }
 
+// 메뉴 순서: 시장현황, 트렌딩, 위시리스트 분석, 고급 분석, 경쟁사 분석, 기회 발굴, 이벤트 캘린더, 관심 목록, 기대작 추적, 세일 모니터
 const navItems: NavItem[] = [
   {
     href: '/',
@@ -53,11 +54,18 @@ const navItems: NavItem[] = [
     tooltip: 'CCU 급상승 게임과 시장 트렌드를 분석합니다',
   },
   {
-    href: '/opportunities',
-    label: '기회 발굴',
-    labelKr: '기회 발굴',
-    icon: Target,
-    tooltip: '경쟁이 낮고 수요가 높은 블루오션 시장을 찾아보세요',
+    href: '/wishlist-analysis',
+    label: '위시리스트 분석',
+    labelKr: '위시리스트 분석',
+    icon: Heart,
+    tooltip: '위시리스트 순위, 전환율, 기대작 트렌드 분석',
+  },
+  {
+    href: '/analytics',
+    label: '고급 분석',
+    labelKr: '고급 분석',
+    icon: BarChart3,
+    tooltip: '리텐션, 변동성, 포지셔닝 등 심층 분석',
   },
   {
     href: '/competitors',
@@ -65,6 +73,27 @@ const navItems: NavItem[] = [
     labelKr: '경쟁사 분석',
     icon: Building2,
     tooltip: '퍼블리셔/개발사별 게임 포트폴리오를 분석합니다',
+  },
+  {
+    href: '/opportunities',
+    label: '기회 발굴',
+    labelKr: '기회 발굴',
+    icon: Target,
+    tooltip: '경쟁이 낮고 수요가 높은 블루오션 시장을 찾아보세요',
+  },
+  {
+    href: '/calendar',
+    label: '이벤트 캘린더',
+    labelKr: '이벤트 캘린더',
+    icon: CalendarDays,
+    tooltip: 'Steam 세일, 페스티벌, 시상식 등 주요 이벤트 일정',
+  },
+  {
+    href: '/watchlist',
+    label: '관심 목록',
+    labelKr: '관심 목록',
+    icon: Star,
+    tooltip: '관심 게임을 추적하고 변동 알림을 받으세요',
   },
   {
     href: '/hype',
@@ -79,34 +108,6 @@ const navItems: NavItem[] = [
     labelKr: '세일 모니터',
     icon: Tag,
     tooltip: '현재 진행 중인 세일과 할인율을 모니터링합니다',
-  },
-  {
-    href: '/watchlist',
-    label: '관심 목록',
-    labelKr: '관심 목록',
-    icon: Star,
-    tooltip: '관심 게임을 추적하고 변동 알림을 받으세요',
-  },
-  {
-    href: '/analytics',
-    label: '고급 분석',
-    labelKr: '고급 분석',
-    icon: BarChart3,
-    tooltip: '리텐션, 변동성, 포지셔닝 등 심층 분석',
-  },
-  {
-    href: '/wishlist-analysis',
-    label: '위시리스트 분석',
-    labelKr: '위시리스트 분석',
-    icon: Heart,
-    tooltip: '위시리스트 순위, 전환율, 기대작 트렌드 분석',
-  },
-  {
-    href: '/calendar',
-    label: '이벤트 캘린더',
-    labelKr: '이벤트 캘린더',
-    icon: CalendarDays,
-    tooltip: 'Steam 세일, 페스티벌, 시상식 등 주요 이벤트 일정',
   },
 ];
 

@@ -14,6 +14,7 @@ import {
 import { useSearch, useAppDetails } from '@/hooks/useSteamData';
 import { formatNumber } from '@/lib/utils/formatters';
 import { InsightCard } from '@/components/cards/InsightCard';
+import { PageHeader } from '@/components/layout/PageHeader';
 import Link from 'next/link';
 
 // 위시리스트 추정 데이터 (실제로는 Steam API나 SteamSpy에서 가져와야 함)
@@ -31,17 +32,17 @@ interface WishlistGame {
   weeklyChange: number;
 }
 
-// 모의 위시리스트 TOP 게임 데이터
+// 모의 위시리스트 TOP 게임 데이터 (실제 Steam AppID 사용)
 const MOCK_WISHLIST_TOP: WishlistGame[] = [
-  { appId: 2322010, name: 'Hollow Knight: Silksong', wishlistCount: 2850000, wishlistRank: 1, followers: 890000, releaseDate: 'TBA', isReleased: false, price: null, tags: ['Metroidvania', 'Souls-like', 'Indie'], weeklyChange: 2.3 },
-  { appId: 1817190, name: 'Marvel 1943: Rise of Hydra', wishlistCount: 1920000, wishlistRank: 2, followers: 520000, releaseDate: '2025', isReleased: false, price: null, tags: ['Action', 'Adventure', 'Story Rich'], weeklyChange: 5.8 },
-  { appId: 2358720, name: 'Black Myth: Wukong', wishlistCount: 1650000, wishlistRank: 3, followers: 480000, releaseDate: '2024', isReleased: true, price: 5999, tags: ['Action RPG', 'Souls-like', 'Mythology'], conversionRate: 32, weeklyChange: -1.2 },
-  { appId: 1245620, name: "Elden Ring: Shadow of the Erdtree", wishlistCount: 1420000, wishlistRank: 4, followers: 620000, releaseDate: 'Jun 2024', isReleased: true, price: 3999, tags: ['Souls-like', 'Open World', 'RPG'], conversionRate: 45, weeklyChange: -3.5 },
-  { appId: 1888930, name: 'The Day Before', wishlistCount: 1280000, wishlistRank: 5, followers: 380000, releaseDate: 'Dec 2023', isReleased: true, price: 3999, tags: ['Survival', 'MMO', 'Zombie'], conversionRate: 8, weeklyChange: -85.2 },
-  { appId: 2246340, name: 'Monster Hunter Wilds', wishlistCount: 1150000, wishlistRank: 6, followers: 340000, releaseDate: '2025', isReleased: false, price: null, tags: ['Action', 'Co-op', 'Monster Hunter'], weeklyChange: 8.4 },
+  { appId: 1030300, name: 'Hollow Knight: Silksong', wishlistCount: 2850000, wishlistRank: 1, followers: 890000, releaseDate: 'TBA', isReleased: false, price: null, tags: ['Metroidvania', 'Souls-like', 'Indie'], weeklyChange: 2.3 },
+  { appId: 2379780, name: 'Monster Hunter Wilds', wishlistCount: 1920000, wishlistRank: 2, followers: 520000, releaseDate: '2025', isReleased: false, price: null, tags: ['Action', 'Co-op', 'Monster Hunter'], weeklyChange: 5.8 },
+  { appId: 2358720, name: 'Black Myth: Wukong', wishlistCount: 1650000, wishlistRank: 3, followers: 480000, releaseDate: 'Aug 2024', isReleased: true, price: 5999, tags: ['Action RPG', 'Souls-like', 'Mythology'], conversionRate: 32, weeklyChange: -1.2 },
+  { appId: 1245620, name: 'Elden Ring', wishlistCount: 1420000, wishlistRank: 4, followers: 620000, releaseDate: 'Feb 2022', isReleased: true, price: 5999, tags: ['Souls-like', 'Open World', 'RPG'], conversionRate: 45, weeklyChange: -3.5 },
+  { appId: 1086940, name: "Baldur's Gate 3", wishlistCount: 1280000, wishlistRank: 5, followers: 380000, releaseDate: 'Aug 2023', isReleased: true, price: 5999, tags: ['RPG', 'Turn-Based', 'Story Rich'], conversionRate: 52, weeklyChange: 2.1 },
+  { appId: 1817070, name: 'Marvel 1943: Rise of Hydra', wishlistCount: 1150000, wishlistRank: 6, followers: 340000, releaseDate: '2025', isReleased: false, price: null, tags: ['Action', 'Adventure', 'Story Rich'], weeklyChange: 8.4 },
   { appId: 1151640, name: 'Horizon Forbidden West', wishlistCount: 980000, wishlistRank: 7, followers: 290000, releaseDate: 'Mar 2024', isReleased: true, price: 5999, tags: ['Action', 'Open World', 'Sci-fi'], conversionRate: 28, weeklyChange: 1.2 },
-  { appId: 2054970, name: 'Frostpunk 2', wishlistCount: 920000, wishlistRank: 8, followers: 310000, releaseDate: 'Sep 2024', isReleased: true, price: 4499, tags: ['City Builder', 'Survival', 'Strategy'], conversionRate: 35, weeklyChange: 4.1 },
-  { appId: 2138710, name: 'STALKER 2', wishlistCount: 850000, wishlistRank: 9, followers: 280000, releaseDate: 'Nov 2024', isReleased: true, price: 5999, tags: ['FPS', 'Survival', 'Horror'], conversionRate: 22, weeklyChange: 2.8 },
+  { appId: 1850570, name: 'Frostpunk 2', wishlistCount: 920000, wishlistRank: 8, followers: 310000, releaseDate: 'Sep 2024', isReleased: true, price: 4499, tags: ['City Builder', 'Survival', 'Strategy'], conversionRate: 35, weeklyChange: 4.1 },
+  { appId: 1643320, name: 'STALKER 2', wishlistCount: 850000, wishlistRank: 9, followers: 280000, releaseDate: 'Nov 2024', isReleased: true, price: 5999, tags: ['FPS', 'Survival', 'Horror'], conversionRate: 22, weeklyChange: 2.8 },
   { appId: 1966720, name: 'Lethal Company', wishlistCount: 780000, wishlistRank: 10, followers: 250000, releaseDate: 'Oct 2023', isReleased: true, price: 999, tags: ['Horror', 'Co-op', 'Indie'], conversionRate: 68, weeklyChange: 12.5 },
 ];
 
@@ -127,15 +128,12 @@ export default function WishlistAnalysisPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-          <Heart className="h-5 w-5 sm:h-6 sm:w-6 text-pink-500" />
-          위시리스트 분석
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Steam 위시리스트 순위, 전환율, 트렌드를 분석합니다
-        </p>
-      </div>
+      <PageHeader
+        title="위시리스트 분석"
+        description="Steam 위시리스트 순위, 전환율, 트렌드를 분석합니다"
+        icon={<Heart className="h-5 w-5 sm:h-6 sm:w-6 text-pink-500" />}
+        pageName="위시리스트 분석"
+      />
 
       {/* 통계 카드 */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">

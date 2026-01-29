@@ -9,6 +9,7 @@ import {
   ArrowUpRight, Info, Tags, ChevronDown, ChevronUp, X
 } from 'lucide-react';
 import { InsightCard } from '@/components/cards/InsightCard';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { formatNumber } from '@/lib/utils/formatters';
 import { TagSimulator } from '@/components/simulator/TagSimulator';
 
@@ -161,15 +162,12 @@ export default function OpportunitiesPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-          <Target className="h-5 w-5 sm:h-6 sm:w-6 text-purple-500" />
-          기회 발굴
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          경쟁이 낮고 수요가 높은 블루오션 시장을 발굴하세요
-        </p>
-      </div>
+      <PageHeader
+        title="기회 발굴"
+        description="경쟁이 낮고 수요가 높은 블루오션 시장을 발굴하세요"
+        icon={<Target className="h-5 w-5 sm:h-6 sm:w-6 text-purple-500" />}
+        pageName="기회 발굴"
+      />
 
       {/* 탭 네비게이션 */}
       <div className="flex gap-1 sm:gap-2 border-b pb-2 overflow-x-auto">

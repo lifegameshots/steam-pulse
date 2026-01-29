@@ -14,6 +14,7 @@ import {
   getDaysUntilEvent,
   type SteamEvent
 } from '@/lib/data/steamEvents';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 // 이벤트 타입 아이콘
 function getEventTypeIcon(type: SteamEvent['type']) {
@@ -79,15 +80,12 @@ export default function CalendarPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-          <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-500" />
-          이벤트 캘린더
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Steam 세일, 페스티벌, 시상식 등 주요 이벤트 일정을 확인하세요
-        </p>
-      </div>
+      <PageHeader
+        title="이벤트 캘린더"
+        description="Steam 세일, 페스티벌, 시상식 등 주요 이벤트 일정을 확인하세요"
+        icon={<CalendarDays className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-500" />}
+        pageName="이벤트 캘린더"
+      />
 
       {/* 요약 통계 */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4">

@@ -25,6 +25,7 @@ import {
   Monitor,
   Apple,
 } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 interface UpcomingGame {
   id: number;
@@ -118,15 +119,12 @@ export default function HypePage() {
   return (
     <div className="space-y-8">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-          <Rocket className="h-8 w-8 text-purple-500" />
-          기대작 추적
-        </h1>
-        <p className="text-muted-foreground">
-          출시 예정작의 기대도(Hype)를 추적하고 분석하세요
-        </p>
-      </div>
+      <PageHeader
+        title="기대작 추적"
+        description="출시 예정작의 기대도(Hype)를 추적하고 분석하세요"
+        icon={<Rocket className="h-5 w-5 sm:h-6 sm:w-6 text-purple-500" />}
+        pageName="기대작 추적"
+      />
 
       {/* 통계 카드 */}
       <div className="grid gap-4 md:grid-cols-4">

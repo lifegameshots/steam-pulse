@@ -10,6 +10,7 @@ import { useTopGames } from '@/hooks/useSteamData';
 import { calculateTrendingScore } from '@/lib/algorithms/trending';
 import { formatNumber } from '@/lib/utils/formatters';
 import { InsightCard } from '@/components/cards/InsightCard';
+import { PageHeader } from '@/components/layout/PageHeader';
 import Link from 'next/link';
 
 type Period = '24h' | '7d' | '30d';
@@ -109,13 +110,12 @@ export default function TrendingPage() {
     <div className="space-y-6">
       {/* 헤더 */}
       <div className="flex flex-col gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-            <Flame className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
-            트렌딩 게임
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">실시간 인기 상승 게임 분석</p>
-        </div>
+        <PageHeader
+          title="트렌딩 게임"
+          description="실시간 인기 상승 게임 분석"
+          icon={<Flame className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />}
+          pageName="트렌딩"
+        />
 
         <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="w-full sm:w-auto">
           <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:flex">

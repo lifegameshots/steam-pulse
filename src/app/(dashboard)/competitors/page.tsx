@@ -25,6 +25,7 @@ import {
   Sparkles,
   Loader2,
 } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 import Link from 'next/link';
 
 interface PublisherGame {
@@ -166,16 +167,13 @@ export default function CompetitorsPage() {
   return (
     <div className="space-y-8">
       {/* 헤더 */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Building2 className="h-8 w-8 text-indigo-500" />
-            경쟁사 분석
-          </h1>
-          <p className="text-muted-foreground">
-            퍼블리셔/개발사별 게임 포트폴리오를 분석하세요
-          </p>
-        </div>
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <PageHeader
+          title="경쟁사 분석"
+          description="퍼블리셔/개발사별 게임 포트폴리오를 분석하세요"
+          icon={<Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-500" />}
+          pageName="경쟁사 분석"
+        />
 
         {/* 검색 */}
         <form onSubmit={handleSearch} className="flex gap-2 w-full md:w-auto">
