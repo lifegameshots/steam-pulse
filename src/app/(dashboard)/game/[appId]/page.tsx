@@ -152,17 +152,56 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
   const { data: game, isLoading: loadingGame, error: gameError } = useAppDetails(appId);
   const { data: newsData, isLoading: loadingNews } = useGameNews(appId);
 
-  // CCU 데이터
+  // CCU 데이터 - 현재 값 기반으로 24시간 모의 히스토리 생성
   const ccuData = useMemo(() => {
     if (!game?.currentPlayers && !game?.steamSpy?.ccu) return [];
-    
+
     const currentCCU = game.currentPlayers || game.steamSpy?.ccu || 0;
     const now = new Date();
-    
-    return [{
+    const data: { time: string; ccu: number }[] = [];
+
+    // 24시간 히스토리 (2시간 간격, 12개 포인트)
+    for (let i = 11; i >= 0; i--) {
+      const time = new Date(now.getTime() - i * 2 * 60 * 60 * 1000);
+      // 시간대별 변동 시뮬레이션 (실제 패턴 모사)
+      const hour = time.getHours();
+      let multiplier = 1;
+
+      // 새벽 (2-8시): 낮음
+      if (hour >= 2 && hour < 8) {
+        multiplier = 0.3 + Math.random() * 0.2;
+      }
+      // 오전 (8-12시): 중간
+      else if (hour >= 8 && hour < 12) {
+        multiplier = 0.5 + Math.random() * 0.2;
+      }
+      // 오후 (12-18시): 보통
+      else if (hour >= 12 && hour < 18) {
+        multiplier = 0.7 + Math.random() * 0.2;
+      }
+      // 저녁 피크 (18-24시): 높음
+      else if (hour >= 18) {
+        multiplier = 0.9 + Math.random() * 0.2;
+      }
+      // 심야 (0-2시): 중상
+      else {
+        multiplier = 0.75 + Math.random() * 0.15;
+      }
+
+      const ccu = Math.round(currentCCU * multiplier);
+      data.push({
+        time: time.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+        ccu: Math.max(1, ccu),
+      });
+    }
+
+    // 마지막에 현재 CCU 추가 (정확한 값)
+    data.push({
       time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
       ccu: currentCCU,
-    }];
+    });
+
+    return data;
   }, [game]);
 
   // 태그 (SteamSpy 태그 + 투표수, 없으면 장르)

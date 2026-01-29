@@ -447,3 +447,63 @@ export async function getKeyUsageStatus(): Promise<{
     };
   }
 }
+
+// 게임 최근 동향 요약 생성 (뉴스 포함)
+export async function generateGameUpdateSummary(data: {
+  name: string;
+  appId: number;
+  recentNews?: Array<{
+    title: string;
+    date: string;
+    contents?: string;
+  }>;
+  reviews?: {
+    total: number;
+    positivePercent: number;
+  };
+  currentPlayers?: number;
+  tags?: string[];
+}): Promise<string> {
+  const cacheKey = `game_update:${data.appId}:${new Date().toISOString().split('T')[0]}`;
+
+  // 캐시 확인
+  const cached = await getCachedInsight(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // 뉴스 정보 포매팅
+  const newsSection = data.recentNews && data.recentNews.length > 0
+    ? data.recentNews.map((n, i) =>
+        `${i + 1}. [${n.date}] ${n.title}${n.contents ? `\n   내용: ${n.contents}` : ''}`
+      ).join('\n')
+    : '최근 뉴스 없음';
+
+  const prompt = `당신은 Steam 게임 분석가입니다. 아래 게임의 최근 동향을 요약해주세요.
+
+## 게임: ${data.name}
+
+## 최근 뉴스/업데이트
+${newsSection}
+
+## 현재 상태
+- 동시접속자: ${data.currentPlayers?.toLocaleString() || '정보 없음'}명
+- 리뷰: ${data.reviews ? `${data.reviews.total.toLocaleString()}개 (긍정 ${data.reviews.positivePercent}%)` : '정보 없음'}
+- 태그: ${data.tags?.slice(0, 5).join(', ') || '정보 없음'}
+
+## 요청
+위 정보를 바탕으로 다음을 간결하게 요약해주세요:
+1. **최근 업데이트 요약**: 주요 업데이트나 뉴스의 핵심 내용
+2. **커뮤니티 반응**: 리뷰 점수와 동접자 수를 기반한 추정
+3. **향후 전망**: 게임의 현재 상태와 방향성
+
+2-3문단으로 핵심만 간결하게 작성해주세요. 마크다운을 사용하세요.
+뉴스나 데이터가 부족해도 있는 정보를 최대한 활용하여 유용한 인사이트를 제공해주세요.`;
+
+  const insight = await generateInsight(prompt);
+
+  // 캐시 저장 (6시간)
+  await setCachedInsight(cacheKey, insight, INSIGHT_TTL.game);
+
+  return insight;
+}
