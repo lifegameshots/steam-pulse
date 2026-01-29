@@ -9,7 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Gift, DollarSign, Package, ChevronDown, ChevronUp,
   ExternalLink, Sparkles, Filter, ArrowUpDown, Music,
-  Palette, Box, CreditCard, RefreshCw, Search
+  Palette, Box, CreditCard, RefreshCw, Search, Info,
+  ShoppingCart, Coins, Gamepad2
 } from 'lucide-react';
 import { InsightCard } from '@/components/cards/InsightCard';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -34,17 +35,33 @@ interface DLCItem {
   type: string;
 }
 
-// 태그 카테고리
+// 태그 카테고리 - Steam에서 실제 사용되는 인기 태그들
 const TAG_CATEGORIES = {
-  genre: ['Action', 'Adventure', 'RPG', 'Strategy', 'Simulation', 'Casual', 'Sports', 'Racing'],
-  theme: ['Anime', 'Fantasy', 'Sci-fi', 'Horror', 'Military', 'Historical'],
-  style: ['Multiplayer', 'MMO', 'PvP', 'Co-op', 'Singleplayer'],
+  genre: [
+    'Action', 'Adventure', 'RPG', 'Strategy', 'Simulation', 'Casual', 'Sports', 'Racing',
+    'FPS', 'Third-Person Shooter', 'MOBA', 'Battle Royale', 'Fighting', 'Puzzle',
+    'Platformer', 'Shooter', 'Card Game', 'Tower Defense', 'MMORPG', 'Roguelike'
+  ],
+  theme: [
+    'Anime', 'Fantasy', 'Sci-fi', 'Horror', 'Military', 'Historical', 'Cyberpunk',
+    'Post-apocalyptic', 'Medieval', 'Steampunk', 'Zombies', 'Space', 'Western', 'Superhero'
+  ],
+  style: [
+    'Multiplayer', 'MMO', 'PvP', 'Co-op', 'Singleplayer', 'Online Co-Op', 'Local Co-Op',
+    'PvE', 'Competitive', 'Team-Based', 'Massively Multiplayer'
+  ],
+  gameplay: [
+    'Open World', 'Sandbox', 'Survival', 'Crafting', 'Building', 'Exploration',
+    'Tactical', 'Turn-Based', 'Real-Time', 'Hack and Slash', 'Looter Shooter',
+    'Hero Shooter', 'Class-Based', 'Character Customization'
+  ],
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
   genre: '장르',
   theme: '테마',
   style: '플레이 방식',
+  gameplay: '게임플레이',
 };
 
 // DLC 유형 아이콘 및 색상
@@ -543,12 +560,70 @@ export default function F2PPage() {
                             />
                           </>
                         ) : (
-                          <div className="text-center py-4 text-muted-foreground">
-                            <p>유료 상품 정보가 없습니다.</p>
+                          <div className="space-y-4">
+                            {/* 인게임 스토어 수익화 모델 안내 */}
+                            <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+                              <div className="flex items-start gap-3">
+                                <Info className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                                <div className="space-y-2">
+                                  <p className="font-medium text-amber-800 dark:text-amber-200">
+                                    Steam DLC가 등록되지 않은 게임입니다
+                                  </p>
+                                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                                    이 게임은 Steam DLC 대신 <strong>인게임 스토어</strong>를 통해 수익화하고 있을 가능성이 높습니다.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* F2P 수익화 모델 유형 설명 */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div className="p-3 bg-background rounded-lg border">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <ShoppingCart className="h-4 w-4 text-blue-500" />
+                                  <span className="font-medium text-sm">인게임 스토어</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  게임 내 상점에서 스킨, 코스메틱, 배틀패스 등 판매 (Fortnite, LoL, Dota 2 방식)
+                                </p>
+                              </div>
+                              <div className="p-3 bg-background rounded-lg border">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Coins className="h-4 w-4 text-yellow-500" />
+                                  <span className="font-medium text-sm">게임 내 화폐</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  프리미엄 화폐 구매 후 인게임 아이템 교환 (가챠, 루트박스 포함)
+                                </p>
+                              </div>
+                              <div className="p-3 bg-background rounded-lg border">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Gamepad2 className="h-4 w-4 text-purple-500" />
+                                  <span className="font-medium text-sm">시즌/배틀패스</span>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  시즌별 유료 패스로 독점 보상 제공 (Apex, Valorant 방식)
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Steam 스토어 링크 */}
+                            <div className="flex items-center justify-center gap-2">
+                              <a
+                                href={`https://store.steampowered.com/app/${expandedGame}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                Steam 스토어에서 상세 정보 확인
+                              </a>
+                            </div>
+
                             <Button
                               variant="outline"
                               size="sm"
-                              className="mt-2"
+                              className="w-full"
                               onClick={() => refetchDlc()}
                             >
                               <RefreshCw className="h-4 w-4 mr-1" />
