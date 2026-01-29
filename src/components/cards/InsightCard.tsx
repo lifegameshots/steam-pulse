@@ -10,9 +10,10 @@ interface InsightCardProps {
   title: string;
   onGenerate: () => Promise<string>;
   initialInsight?: string;
+  icon?: React.ReactNode;
 }
 
-export function InsightCard({ title, onGenerate, initialInsight }: InsightCardProps) {
+export function InsightCard({ title, onGenerate, initialInsight, icon }: InsightCardProps) {
   const [insight, setInsight] = useState<string | null>(initialInsight || null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +79,7 @@ export function InsightCard({ title, onGenerate, initialInsight }: InsightCardPr
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-purple-700 dark:text-purple-300">
-            <Sparkles className="h-5 w-5" />
+            {icon || <Sparkles className="h-5 w-5" />}
             <span>{title}</span>
           </div>
           <Button

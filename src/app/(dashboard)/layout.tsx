@@ -23,12 +23,12 @@ export default async function DashboardLayout({
       <Sidebar />
 
       {/* 메인 컨텐츠 영역 */}
-      <div className="pl-64">
+      <div className="lg:pl-64">
         {/* 헤더 */}
         <Header user={user} />
 
         {/* 페이지 컨텐츠 */}
-        <main className="p-6">
+        <main className="p-4 lg:p-6">
           {children}
         </main>
       </div>

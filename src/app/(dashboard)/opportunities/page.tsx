@@ -4,12 +4,13 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  Target, TrendingUp, Lightbulb, BarChart3, 
-  ArrowUpRight, Info
+import {
+  Target, TrendingUp, Lightbulb, BarChart3,
+  ArrowUpRight, Info, Tags
 } from 'lucide-react';
 import { InsightCard } from '@/components/cards/InsightCard';
 import { formatNumber } from '@/lib/utils/formatters';
+import { TagSimulator } from '@/components/simulator/TagSimulator';
 
 // 기회 점수 계산 (PRD 알고리즘)
 function calculateOpportunityScore(
@@ -57,15 +58,18 @@ function generateMockOpportunities() {
   })).sort((a, b) => b.opportunityScore - a.opportunityScore);
 }
 
+type TabType = 'ranking' | 'simulator';
+
 export default function OpportunitiesPage() {
+  const [activeTab, setActiveTab] = useState<TabType>('ranking');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  
+
   const opportunities = useMemo(() => generateMockOpportunities(), []);
 
   // 선택된 태그 필터링
   const filteredOpportunities = useMemo(() => {
     if (selectedTags.length === 0) return opportunities;
-    return opportunities.filter(opp => 
+    return opportunities.filter(opp =>
       selectedTags.some(tag => opp.tags.some(t => t.toLowerCase().includes(tag.toLowerCase())))
     );
   }, [opportunities, selectedTags]);
@@ -82,7 +86,7 @@ export default function OpportunitiesPage() {
     const response = await fetch('/api/insight/opportunity', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         opportunities: filteredOpportunities.slice(0, 10)
       }),
     });
@@ -103,185 +107,213 @@ export default function OpportunitiesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 헤더 */}
       <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Target className="h-6 w-6 text-purple-500" />
-          Niche Finder
+        <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+          <Target className="h-5 w-5 sm:h-6 sm:w-6 text-purple-500" />
+          기회 발굴
         </h1>
-        <p className="text-muted-foreground mt-1">
-          Discover untapped market opportunities with low competition and high demand
+        <p className="text-sm text-muted-foreground mt-1">
+          경쟁이 낮고 수요가 높은 블루오션 시장을 발굴하세요
         </p>
       </div>
 
-      {/* 알고리즘 설명 */}
-      <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
-        <CardContent className="pt-4">
-          <div className="flex items-start gap-3">
-            <Info className="h-5 w-5 text-blue-500 mt-0.5" />
-            <div className="text-sm text-blue-700 dark:text-blue-300">
-              <p className="font-medium mb-1">Opportunity Score Formula</p>
-              <p className="font-mono text-xs bg-blue-100 dark:bg-blue-900 p-2 rounded">
-                Score = (Market Size / Avg Market) × (1 / log(Competition + 1)) × Success Rate
-              </p>
-              <p className="mt-2">Higher scores indicate promising markets with low competition relative to demand.</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 태그 필터 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Tag Filter</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {allTags.map(tag => (
-              <Badge
-                key={tag}
-                variant={selectedTags.includes(tag) ? 'default' : 'outline'}
-                className="cursor-pointer hover:bg-primary/80 transition-colors"
-                onClick={() => {
-                  setSelectedTags(prev =>
-                    prev.includes(tag)
-                      ? prev.filter(t => t !== tag)
-                      : [...prev, tag]
-                  );
-                }}
-              >
-                {tag}
-              </Badge>
-            ))}
-          </div>
-          {selectedTags.length > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="mt-2"
-              onClick={() => setSelectedTags([])}
-            >
-              Clear Filters
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* AI 인사이트 */}
-      <InsightCard 
-        title="AI Market Opportunity Analysis" 
-        onGenerate={generateOpportunityInsight}
-      />
-
-      {/* 기회 테이블 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="h-5 w-5 text-yellow-500" />
-            Opportunity Ranking
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {filteredOpportunities.map((opp, index) => {
-              const scoreBadge = getScoreBadge(opp.opportunityScore);
-              
-              return (
-                <div 
-                  key={opp.tags.join('-')}
-                  className="flex items-center gap-4 p-4 rounded-lg border hover:bg-accent/50 transition-colors"
-                >
-                  {/* 순위 */}
-                  <div className="w-8 text-center">
-                    <span className={`font-bold text-lg ${
-                      index < 3 ? 'text-purple-500' : 'text-muted-foreground'
-                    }`}>
-                      {index + 1}
-                    </span>
-                  </div>
-
-                  {/* 태그 조합 */}
-                  <div className="flex-1">
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {opp.tags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="text-xs">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <BarChart3 className="h-3 w-3" />
-                        Avg Reviews: {formatNumber(opp.avgReviews)}
-                      </span>
-                      <span>Games: {opp.gameCount}</span>
-                      <span className="flex items-center gap-1">
-                        <TrendingUp className="h-3 w-3" />
-                        Success Rate: {(opp.successRate * 100).toFixed(0)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 기회 점수 */}
-                  <div className="text-right">
-                    <Badge 
-                      variant={scoreBadge.variant}
-                      className={scoreBadge.className}
-                    >
-                      {scoreBadge.label}
-                    </Badge>
-                    <p className={`text-2xl font-bold mt-1 ${
-                      opp.opportunityScore > 2 ? 'text-green-500' :
-                      opp.opportunityScore > 1 ? 'text-yellow-500' : 'text-muted-foreground'
-                    }`}>
-                      {opp.opportunityScore.toFixed(2)}
-                    </p>
-                  </div>
-
-                  {/* 화살표 */}
-                  <ArrowUpRight className="h-5 w-5 text-muted-foreground" />
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 시장 규모 요약 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <Target className="h-8 w-8 mx-auto text-purple-500 mb-2" />
-            <p className="text-3xl font-bold text-purple-600">
-              {filteredOpportunities.filter(o => o.opportunityScore > 2).length}
-            </p>
-            <p className="text-sm text-muted-foreground">High Opportunity Markets</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <TrendingUp className="h-8 w-8 mx-auto text-green-500 mb-2" />
-            <p className="text-3xl font-bold text-green-600">
-              {(filteredOpportunities.reduce((sum, o) => sum + o.successRate, 0) / filteredOpportunities.length * 100).toFixed(0)}%
-            </p>
-            <p className="text-sm text-muted-foreground">Average Success Rate</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <BarChart3 className="h-8 w-8 mx-auto text-blue-500 mb-2" />
-            <p className="text-3xl font-bold text-blue-600">
-              {formatNumber(
-                filteredOpportunities.reduce((sum, o) => sum + o.avgReviews, 0) / filteredOpportunities.length
-              )}
-            </p>
-            <p className="text-sm text-muted-foreground">Average Reviews</p>
-          </CardContent>
-        </Card>
+      {/* 탭 네비게이션 */}
+      <div className="flex gap-1 sm:gap-2 border-b pb-2 overflow-x-auto">
+        <Button
+          variant={activeTab === 'ranking' ? 'default' : 'ghost'}
+          onClick={() => setActiveTab('ranking')}
+          className="flex items-center gap-1.5 sm:gap-2 text-sm min-h-[40px] flex-shrink-0"
+        >
+          <Lightbulb className="h-4 w-4" />
+          <span className="hidden sm:inline">기회</span> 순위
+        </Button>
+        <Button
+          variant={activeTab === 'simulator' ? 'default' : 'ghost'}
+          onClick={() => setActiveTab('simulator')}
+          className="flex items-center gap-1.5 sm:gap-2 text-sm min-h-[40px] flex-shrink-0"
+        >
+          <Tags className="h-4 w-4" />
+          <span className="hidden sm:inline">태그</span> 시뮬레이터
+        </Button>
       </div>
+
+      {/* 탭 콘텐츠 */}
+      {activeTab === 'ranking' ? (
+        <>
+          {/* 알고리즘 설명 - 모바일에서 간소화 */}
+          <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
+            <CardContent className="pt-4 px-4 sm:px-6">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <Info className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div className="text-xs sm:text-sm text-blue-700 dark:text-blue-300">
+                  <p className="font-medium mb-1">Opportunity Score 공식</p>
+                  <p className="font-mono text-xs bg-blue-100 dark:bg-blue-900 p-2 rounded overflow-x-auto">
+                    Score = (시장 규모 / 평균) × 경쟁 지수 × 성공률
+                  </p>
+                  <p className="mt-2 hidden sm:block">높은 점수는 경쟁 대비 수요가 높은 유망 시장을 나타냅니다.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 태그 필터 */}
+          <Card>
+            <CardHeader className="px-4 sm:px-6">
+              <CardTitle className="text-base sm:text-lg">태그 필터</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                {allTags.map(tag => (
+                  <Badge
+                    key={tag}
+                    variant={selectedTags.includes(tag) ? 'default' : 'outline'}
+                    className="cursor-pointer hover:bg-primary/80 active:bg-primary/90 transition-colors text-xs sm:text-sm min-h-[32px] flex items-center"
+                    onClick={() => {
+                      setSelectedTags(prev =>
+                        prev.includes(tag)
+                          ? prev.filter(t => t !== tag)
+                          : [...prev, tag]
+                      );
+                    }}
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+              {selectedTags.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 min-h-[36px]"
+                  onClick={() => setSelectedTags([])}
+                >
+                  필터 초기화
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* AI 인사이트 */}
+          <InsightCard
+            title="AI Market Opportunity Analysis"
+            onGenerate={generateOpportunityInsight}
+          />
+
+          {/* 기회 테이블 */}
+          <Card>
+            <CardHeader className="px-4 sm:px-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Lightbulb className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
+                기회 순위
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6">
+              <div className="space-y-2 sm:space-y-3">
+                {filteredOpportunities.map((opp, index) => {
+                  const scoreBadge = getScoreBadge(opp.opportunityScore);
+
+                  return (
+                    <div
+                      key={opp.tags.join('-')}
+                      className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border hover:bg-accent/50 active:bg-accent/70 transition-colors min-h-[72px]"
+                    >
+                      {/* 순위 */}
+                      <div className="w-6 sm:w-8 text-center flex-shrink-0">
+                        <span className={`font-bold text-base sm:text-lg ${
+                          index < 3 ? 'text-purple-500' : 'text-muted-foreground'
+                        }`}>
+                          {index + 1}
+                        </span>
+                      </div>
+
+                      {/* 태그 조합 */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap gap-1 mb-1.5 sm:mb-2">
+                          {opp.tags.map(tag => (
+                            <Badge key={tag} variant="secondary" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground flex-wrap">
+                          <span className="flex items-center gap-1">
+                            <BarChart3 className="h-3 w-3" />
+                            {formatNumber(opp.avgReviews)}
+                          </span>
+                          <span>{opp.gameCount}개</span>
+                          <span className="flex items-center gap-1">
+                            <TrendingUp className="h-3 w-3" />
+                            {(opp.successRate * 100).toFixed(0)}%
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 기회 점수 */}
+                      <div className="text-right flex-shrink-0">
+                        <Badge
+                          variant={scoreBadge.variant}
+                          className={`text-xs ${scoreBadge.className}`}
+                        >
+                          {scoreBadge.label}
+                        </Badge>
+                        <p className={`text-lg sm:text-2xl font-bold mt-1 ${
+                          opp.opportunityScore > 2 ? 'text-green-500' :
+                          opp.opportunityScore > 1 ? 'text-yellow-500' : 'text-muted-foreground'
+                        }`}>
+                          {opp.opportunityScore.toFixed(2)}
+                        </p>
+                      </div>
+
+                      {/* 화살표 - 모바일에서 숨김 */}
+                      <ArrowUpRight className="h-5 w-5 text-muted-foreground hidden sm:block" />
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 시장 규모 요약 */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <Card>
+              <CardContent className="pt-4 sm:pt-6 px-2 sm:px-6 text-center">
+                <Target className="h-6 w-6 sm:h-8 sm:w-8 mx-auto text-purple-500 mb-1 sm:mb-2" />
+                <p className="text-xl sm:text-3xl font-bold text-purple-600">
+                  {filteredOpportunities.filter(o => o.opportunityScore > 2).length}
+                </p>
+                <p className="text-xs sm:text-sm text-muted-foreground">기회 시장</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-4 sm:pt-6 px-2 sm:px-6 text-center">
+                <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 mx-auto text-green-500 mb-1 sm:mb-2" />
+                <p className="text-xl sm:text-3xl font-bold text-green-600">
+                  {(filteredOpportunities.reduce((sum, o) => sum + o.successRate, 0) / filteredOpportunities.length * 100).toFixed(0)}%
+                </p>
+                <p className="text-xs sm:text-sm text-muted-foreground">평균 성공률</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="pt-4 sm:pt-6 px-2 sm:px-6 text-center">
+                <BarChart3 className="h-6 w-6 sm:h-8 sm:w-8 mx-auto text-blue-500 mb-1 sm:mb-2" />
+                <p className="text-xl sm:text-3xl font-bold text-blue-600">
+                  {formatNumber(
+                    filteredOpportunities.reduce((sum, o) => sum + o.avgReviews, 0) / filteredOpportunities.length
+                  )}
+                </p>
+                <p className="text-xs sm:text-sm text-muted-foreground">평균 리뷰</p>
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      ) : (
+        /* 태그 시뮬레이터 탭 */
+        <TagSimulator />
+      )}
     </div>
   );
 }

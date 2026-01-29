@@ -119,23 +119,23 @@ export default function TrendingPage() {
   return (
     <div className="space-y-6">
       {/* 헤더 */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Flame className="h-6 w-6 text-orange-500" />
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <Flame className="h-5 w-5 sm:h-6 sm:w-6 text-orange-500" />
             트렌딩 게임
           </h1>
-          <p className="text-gray-500 mt-1">실시간 인기 상승 게임 분석</p>
+          <p className="text-sm text-gray-500 mt-1">실시간 인기 상승 게임 분석</p>
         </div>
 
-        <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
-          <TabsList>
-            <TabsTrigger value="24h" className="flex items-center gap-1">
-              <Clock className="h-4 w-4" />
-              24시간
+        <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="w-full sm:w-auto">
+          <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:flex">
+            <TabsTrigger value="24h" className="flex items-center gap-1 text-sm min-h-[40px]">
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span>24시간</span>
             </TabsTrigger>
-            <TabsTrigger value="7d">7일</TabsTrigger>
-            <TabsTrigger value="30d">30일</TabsTrigger>
+            <TabsTrigger value="7d" className="text-sm min-h-[40px]">7일</TabsTrigger>
+            <TabsTrigger value="30d" className="text-sm min-h-[40px]">30일</TabsTrigger>
           </TabsList>
         </Tabs>
       </div>
@@ -148,13 +148,13 @@ export default function TrendingPage() {
 
       {/* 트렌딩 테이블 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-green-500" />
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
             트렌딩 순위
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 sm:px-6">
           {isLoading ? (
             <div className="space-y-3">
               {[...Array(10)].map((_, i) => (
@@ -164,18 +164,18 @@ export default function TrendingPage() {
           ) : (
             <div className="space-y-2">
               {filteredGames.slice(0, 20).map((game, index) => (
-                <Link 
-                  key={game.appId} 
+                <Link
+                  key={game.appId}
                   href={`/game/${game.appId}`}
                   className="block"
                 >
-                  <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors border">
+                  <div className="flex items-center gap-2 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 active:bg-gray-100 dark:active:bg-gray-700 transition-colors border min-h-[64px]">
                     {/* 순위 */}
-                    <div className="w-8 text-center font-bold text-lg">
+                    <div className="w-6 sm:w-8 text-center font-bold text-base sm:text-lg flex-shrink-0">
                       {index < 3 ? (
                         <span className={
-                          index === 0 ? 'text-yellow-500' : 
-                          index === 1 ? 'text-gray-400' : 
+                          index === 0 ? 'text-yellow-500' :
+                          index === 1 ? 'text-gray-400' :
                           'text-orange-400'
                         }>
                           {index + 1}
@@ -185,11 +185,11 @@ export default function TrendingPage() {
                       )}
                     </div>
 
-                    {/* 게임 이미지 */}
+                    {/* 게임 이미지 - 모바일에서 숨김 */}
                     <img
                       src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appId}/capsule_sm_120.jpg`}
                       alt=""
-                      className="w-24 h-9 object-cover rounded"
+                      className="hidden sm:block w-20 sm:w-24 h-8 sm:h-9 object-cover rounded flex-shrink-0"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = '/placeholder-game.png';
                       }}
@@ -197,34 +197,34 @@ export default function TrendingPage() {
 
                     {/* 게임 정보 */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium truncate">
+                      <h3 className="font-medium text-sm sm:text-base truncate">
                         {getGameName(game.appId)}
                       </h3>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <span>CCU: {formatNumber(game.ccu)}</span>
-                        <span>•</span>
-                        <span>Peak: {formatNumber(game.peak)}</span>
+                      <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-500">
+                        <span>{formatNumber(game.ccu)}</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="hidden sm:inline">Peak: {formatNumber(game.peak)}</span>
                       </div>
                     </div>
 
                     {/* 변화율 */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
                       {game.ccuChange >= 0 ? (
-                        <TrendingUp className="h-4 w-4 text-green-500" />
+                        <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                       ) : (
-                        <TrendingDown className="h-4 w-4 text-red-500" />
+                        <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
                       )}
-                      <span className={game.ccuChange >= 0 ? 'text-green-500' : 'text-red-500'}>
-                        {game.ccuChange >= 0 ? '+' : ''}{game.ccuChange.toFixed(1)}%
+                      <span className={`text-xs sm:text-sm ${game.ccuChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {game.ccuChange >= 0 ? '+' : ''}{game.ccuChange.toFixed(0)}%
                       </span>
                     </div>
 
                     {/* 트렌딩 점수 */}
-                    <Badge 
+                    <Badge
                       variant={game.trendingScore > 50 ? 'default' : 'secondary'}
-                      className={game.trendingScore > 70 ? 'bg-orange-500' : ''}
+                      className={`text-xs flex-shrink-0 ${game.trendingScore > 70 ? 'bg-orange-500' : ''}`}
                     >
-                      {game.trendingScore.toFixed(0)}점
+                      {game.trendingScore.toFixed(0)}
                     </Badge>
                   </div>
                 </Link>

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { redis } from '@/lib/redis';
 
 // 환경 변수에서 Gemini API 키 배열 생성
 const GEMINI_KEYS = [
@@ -16,6 +17,10 @@ const GEMINI_KEYS = [
 
 const DAILY_LIMIT_PER_KEY = 950;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+
+// Redis 기반 키 사용량 캐시 (Supabase RPC 호출 최소화)
+const KEY_USAGE_CACHE_TTL = 60; // 1분 캐시 (Redis)
+const getUsageCacheKey = () => `gemini:usage:${new Date().toISOString().split('T')[0]}`;
 
 // 캐시 TTL 설정 (초)
 export const INSIGHT_TTL = {
@@ -41,40 +46,81 @@ interface GeminiResponse {
   };
 }
 
-// API 키 선택 (가장 적게 사용된 키)
+// API 키 선택 (Redis 캐시 + 라운드 로빈으로 Supabase 호출 최소화)
 async function selectApiKey(): Promise<{ key: string; index: number }> {
   if (GEMINI_KEYS.length === 0) {
     throw new Error('No Gemini API keys configured');
   }
 
-  try {
-    const supabase = await createClient();
-    
-    // RPC 함수로 가장 적게 사용된 키 인덱스 조회
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: selectedIndex, error } = await (supabase.rpc as any)('get_least_used_key', {
-      p_key_count: GEMINI_KEYS.length,
-      p_daily_limit: DAILY_LIMIT_PER_KEY
-    });
+  const cacheKey = getUsageCacheKey();
 
-    if (error || selectedIndex === -1 || selectedIndex === null) {
-      console.warn('Fallback to first key:', error?.message);
-      return { key: GEMINI_KEYS[0], index: 0 };
+  try {
+    // 1. Redis에서 오늘의 사용량 캐시 확인
+    let usageMap = await redis.get<Record<number, number>>(cacheKey);
+
+    // 2. 캐시 미스시 Supabase에서 조회
+    if (!usageMap) {
+      const supabase = await createClient();
+      const today = new Date().toISOString().split('T')[0];
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from('gemini_key_usage')
+        .select('key_index, request_count')
+        .eq('used_at', today);
+
+      usageMap = {};
+      if (!error && data) {
+        for (const row of data) {
+          usageMap[row.key_index] = row.request_count;
+        }
+      }
+
+      // Redis에 캐시 저장 (1분)
+      await redis.setex(cacheKey, KEY_USAGE_CACHE_TTL, usageMap);
+    }
+
+    // 3. 한도 미달인 키 중 가장 적게 사용된 키 선택
+    let selectedIndex = -1;
+    let minUsage = Infinity;
+
+    for (let i = 0; i < GEMINI_KEYS.length; i++) {
+      const usage = usageMap[i] || 0;
+      if (usage < DAILY_LIMIT_PER_KEY && usage < minUsage) {
+        minUsage = usage;
+        selectedIndex = i;
+      }
+    }
+
+    if (selectedIndex === -1) {
+      throw new Error('All API keys have reached daily limit');
     }
 
     return {
-      key: GEMINI_KEYS[selectedIndex as number],
-      index: selectedIndex as number
+      key: GEMINI_KEYS[selectedIndex],
+      index: selectedIndex
     };
   } catch (err) {
-    console.warn('Key selection error, using first key:', err);
-    return { key: GEMINI_KEYS[0], index: 0 };
+    console.warn('Key selection error, using round robin:', err);
+    // 폴백: 간단한 라운드 로빈 (시간 기반)
+    const fallbackIndex = Math.floor(Date.now() / 60000) % GEMINI_KEYS.length;
+    return { key: GEMINI_KEYS[fallbackIndex], index: fallbackIndex };
   }
 }
 
-// 사용량 기록
+// 사용량 기록 (Redis 캐시도 업데이트)
 async function recordKeyUsage(keyIndex: number): Promise<void> {
+  const cacheKey = getUsageCacheKey();
+
   try {
+    // 1. Redis 캐시 업데이트 (즉시 반영)
+    const usageMap = await redis.get<Record<number, number>>(cacheKey);
+    if (usageMap) {
+      usageMap[keyIndex] = (usageMap[keyIndex] || 0) + 1;
+      await redis.setex(cacheKey, KEY_USAGE_CACHE_TTL, usageMap);
+    }
+
+    // 2. Supabase에 비동기 기록 (fire-and-forget이 아니라 await)
     const supabase = await createClient();
     const today = new Date().toISOString().split('T')[0];
 
@@ -88,11 +134,20 @@ async function recordKeyUsage(keyIndex: number): Promise<void> {
   }
 }
 
-// 캐시에서 인사이트 조회
+// 캐시에서 인사이트 조회 (Redis 우선, Supabase 폴백)
 export async function getCachedInsight(cacheKey: string): Promise<string | null> {
+  const redisCacheKey = `insight:${cacheKey}`;
+
   try {
+    // 1. Redis에서 먼저 확인 (빠름)
+    const redisCache = await redis.get<string>(redisCacheKey);
+    if (redisCache !== null) {
+      return redisCache;
+    }
+
+    // 2. Redis 미스시 Supabase 확인
     const supabase = await createClient();
-    
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any)
       .from('insight_cache')
@@ -102,19 +157,29 @@ export async function getCachedInsight(cacheKey: string): Promise<string | null>
       .single();
 
     if (error || !data) return null;
+
+    // Supabase에서 찾았으면 Redis에도 캐시 (남은 TTL 추정)
+    await redis.setex(redisCacheKey, 1800, data.insight_text); // 30분
+
     return data.insight_text as string;
   } catch {
     return null;
   }
 }
 
-// 캐시에 인사이트 저장
+// 캐시에 인사이트 저장 (Redis + Supabase 동시 저장)
 export async function setCachedInsight(
-  cacheKey: string, 
-  insightText: string, 
+  cacheKey: string,
+  insightText: string,
   ttlSeconds: number
 ): Promise<void> {
+  const redisCacheKey = `insight:${cacheKey}`;
+
   try {
+    // 1. Redis에 즉시 저장 (빠른 읽기용)
+    await redis.setex(redisCacheKey, ttlSeconds, insightText);
+
+    // 2. Supabase에도 저장 (영구 보관용)
     const supabase = await createClient();
     const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
 
