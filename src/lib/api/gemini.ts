@@ -30,6 +30,7 @@ export const INSIGHT_TTL = {
   competitor: 14400,   // 4시간
   hype: 3600,          // 1시간
   watchlist: 3600,     // 1시간
+  wishlist: 7200,      // 2시간
 };
 
 interface GeminiResponse {
@@ -504,6 +505,63 @@ ${newsSection}
 
   // 캐시 저장 (6시간)
   await setCachedInsight(cacheKey, insight, INSIGHT_TTL.game);
+
+  return insight;
+}
+
+// 위시리스트 인사이트 생성
+export async function generateWishlistInsight(
+  wishlistGames: Array<{
+    name: string;
+    wishlistCount: number;
+    weeklyChange: number;
+    conversionRate?: number;
+    isReleased: boolean;
+    tags: string[];
+  }>
+): Promise<string> {
+  const cacheKey = `wishlist:${new Date().toISOString().split('T')[0]}`;
+
+  // 캐시 확인
+  const cached = await getCachedInsight(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const gamesList = wishlistGames.slice(0, 10).map((g, i) => {
+    const conversionInfo = g.isReleased && g.conversionRate
+      ? `, 전환율: ${g.conversionRate}%`
+      : '';
+    return `${i + 1}. ${g.name} - 위시리스트: ${g.wishlistCount.toLocaleString()}, 주간 변동: ${g.weeklyChange > 0 ? '+' : ''}${g.weeklyChange.toFixed(1)}%, 출시: ${g.isReleased ? '완료' : '예정'}${conversionInfo}, 태그: [${g.tags.join(', ')}]`;
+  }).join('\n');
+
+  const releasedGames = wishlistGames.filter(g => g.isReleased && g.conversionRate);
+  const avgConversion = releasedGames.length > 0
+    ? releasedGames.reduce((sum, g) => sum + (g.conversionRate || 0), 0) / releasedGames.length
+    : 0;
+
+  const prompt = `당신은 Steam 위시리스트 분석 및 게임 마케팅 전문가입니다. 아래 위시리스트 데이터를 분석하고 한국어로 인사이트를 제공해주세요.
+
+## 위시리스트 TOP 10 게임
+${gamesList}
+
+## 전체 통계
+- 평균 전환율 (출시된 게임): ${avgConversion.toFixed(1)}%
+- 출시 완료 게임: ${releasedGames.length}개
+- 출시 예정 게임: ${wishlistGames.filter(g => !g.isReleased).length}개
+
+## 분석 요청
+1. **기대작 분석**: 가장 주목해야 할 출시 예정 게임과 이유
+2. **전환율 분석**: 출시된 게임들의 위시리스트 → 구매 전환 성과 평가
+3. **트렌드 인사이트**: 위시리스트 데이터에서 보이는 시장 트렌드
+4. **인디 개발자 팁**: 위시리스트를 늘리고 전환율을 높이기 위한 전략
+
+간결하고 핵심적인 인사이트를 3-4문단으로 제공해주세요. 마크다운 형식을 사용하세요.`;
+
+  const insight = await generateInsight(prompt);
+
+  // 캐시 저장 (2시간)
+  await setCachedInsight(cacheKey, insight, INSIGHT_TTL.wishlist);
 
   return insight;
 }

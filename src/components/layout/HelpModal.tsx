@@ -20,6 +20,8 @@ import {
   Sparkles,
   Calendar,
   HelpCircle,
+  Heart,
+  CalendarDays,
 } from 'lucide-react';
 
 interface HelpModalProps {
@@ -81,8 +83,22 @@ const menuGuides = [
     icon: BarChart3,
     name: '고급 분석',
     color: 'text-indigo-400',
-    description: '리텐션, 변동성, 포지셔닝 맵, 이벤트 캘린더 등 심층 분석 도구',
-    usage: '탭 선택 → 리텐션/변동성으로 게임 건강도 확인 → 이벤트 캘린더로 마케팅 타이밍 파악',
+    description: '리텐션, 변동성, 포지셔닝 맵 등 심층 분석 도구',
+    usage: '탭 선택 → 리텐션/변동성으로 게임 건강도 확인 → 포지셔닝 맵으로 경쟁 위치 파악',
+  },
+  {
+    icon: Heart,
+    name: '위시리스트 분석',
+    color: 'text-pink-400',
+    description: '위시리스트 TOP 10, 전환율 분석, 기대작 트렌드. 인디 개발자 필수 지표',
+    usage: '순위 확인 → 전환율 분석으로 출시 성과 예측 → AI 인사이트로 마케팅 전략 수립',
+  },
+  {
+    icon: CalendarDays,
+    name: '이벤트 캘린더',
+    color: 'text-cyan-400',
+    description: 'Steam 세일, Next Fest, Game Awards 등 주요 이벤트 일정과 마케팅 팁',
+    usage: '현재/다가오는 이벤트 확인 → 마케팅 팁 참고 → 출시/세일 타이밍 계획',
   },
 ];
 
@@ -98,9 +114,9 @@ const features = [
     description: '각 페이지의 [AI 분석] 버튼으로 Gemini AI 기반 시장 인사이트 생성',
   },
   {
-    icon: Calendar,
-    name: '이벤트 캘린더',
-    description: 'Steam 세일, Next Fest, Game Awards 등 주요 이벤트 일정과 마케팅 팁 제공',
+    icon: Heart,
+    name: '위시리스트 전환율',
+    description: '위시리스트 → 구매 전환율 분석으로 출시 성과 예측 및 마케팅 효과 측정',
   },
 ];
 
@@ -187,6 +203,8 @@ export function HelpModal({ open, onOpenChange }: HelpModalProps) {
             <li>• <strong>태그 시뮬레이터</strong>로 내 게임의 예상 성과 미리 분석</li>
             <li>• <strong>이벤트 캘린더</strong>에서 세일/페스트 일정 확인 후 마케팅 계획 수립</li>
             <li>• 관심 게임을 <strong>Watchlist</strong>에 등록하면 변동 사항 빠르게 파악</li>
+            <li>• <strong>위시리스트 분석</strong>에서 전환율 기준으로 출시 성과 예측 가능</li>
+            <li>• 위시리스트 10만+ 달성 시 출시 첫 주 10,000+ 판매 가능성 높음</li>
           </ul>
         </div>
 

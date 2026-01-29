@@ -18,6 +18,7 @@ import {
   BarChart3,
   HelpCircle,
   CalendarDays,
+  Heart,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -92,6 +93,13 @@ const navItems: NavItem[] = [
     labelKr: '고급 분석',
     icon: BarChart3,
     tooltip: '리텐션, 변동성, 포지셔닝 등 심층 분석',
+  },
+  {
+    href: '/wishlist-analysis',
+    label: '위시리스트 분석',
+    labelKr: '위시리스트 분석',
+    icon: Heart,
+    tooltip: '위시리스트 순위, 전환율, 기대작 트렌드 분석',
   },
   {
     href: '/calendar',

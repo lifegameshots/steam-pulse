@@ -204,26 +204,40 @@ export function useGameReviews(appId: string | number) {
   });
 }
 
+// Top 게임 데이터 타입 확장 (이름 포함)
+interface TopGamesDataExtended {
+  response: {
+    ranks: {
+      rank: number;
+      appid: number;
+      name: string;
+      concurrent_in_game: number;
+      peak_in_game: number;
+    }[];
+  };
+}
+
 // Top 게임 (CCU 순위) 조회
 export function useTopGames() {
-  return useQuery<TopGamesData>({
+  return useQuery<TopGamesDataExtended>({
     queryKey: ['topGames'],
     queryFn: async () => {
-      // Steam Charts API를 직접 호출하거나 우리 API를 통해 가져옴
-      // 여기서는 globalCCU API를 활용하여 변환
+      // Steam CCU API를 통해 가져옴
       const res = await fetch('/api/steam/ccu');
       if (!res.ok) throw new Error('Failed to fetch top games');
       const data = await res.json();
 
-      // GlobalCCU 응답을 TopGamesData 형식으로 변환
+      // CCU API 응답의 games 필드를 TopGamesData 형식으로 변환
+      const games = data.games || [];
       return {
         response: {
-          ranks: data.topGames?.map((game: { appId: number; name: string; ccu: number }, index: number) => ({
+          ranks: games.map((game: { appid: number; name: string; current_players: number }, index: number) => ({
             rank: index + 1,
-            appid: game.appId,
-            concurrent_in_game: game.ccu,
-            peak_in_game: game.ccu, // peak 데이터가 없으면 현재 CCU 사용
-          })) || []
+            appid: game.appid,
+            name: game.name,
+            concurrent_in_game: game.current_players,
+            peak_in_game: game.current_players, // peak 데이터가 없으면 현재 CCU 사용
+          }))
         }
       };
     },
