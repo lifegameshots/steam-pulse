@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { TrendingUp, TrendingDown, Flame, Clock } from 'lucide-react';
+import { TrendingUp, TrendingDown, Flame, Clock, Database, ExternalLink, AlertCircle } from 'lucide-react';
 import { useTopGames } from '@/hooks/useSteamData';
 import { calculateTrendingScore } from '@/lib/algorithms/trending';
 import { formatNumber } from '@/lib/utils/formatters';
@@ -16,6 +17,17 @@ import Link from 'next/link';
 
 type Period = '24h' | '7d' | '30d';
 
+// CCU 트렌드 데이터 타입 (API 응답)
+interface GameTrend {
+  appId: number;
+  name: string;
+  currentCCU: number;
+  previousCCU: number;
+  changePercent: number;
+  trend: 'rising' | 'falling' | 'stable';
+  history: Array<{ date: string; ccu: number }>;
+}
+
 // 트렌딩 게임 타입 정의
 interface TrendingGame {
   appId: number;
@@ -25,71 +37,113 @@ interface TrendingGame {
   ccuChange: number;
   trendingScore: number;
   grade: string;
+  dataSource: 'realtime' | 'historical';
 }
 
+// 기간에 따른 일수 매핑
+const periodToDays: Record<Period, number> = {
+  '24h': 1,
+  '7d': 7,
+  '30d': 30,
+};
+
 export default function TrendingPage() {
-  const [period, setPeriod] = useState<Period>('24h');
-  const { data: topGames, isLoading, error, refetch } = useTopGames();
+  const [period, setPeriod] = useState<Period>('7d');
 
-  // 트렌딩 점수 계산 및 정렬
+  // 실시간 Top 게임 데이터 (항상 가져옴)
+  const { data: topGames, isLoading: topGamesLoading, error: topGamesError, refetch: refetchTopGames } = useTopGames();
+
+  // CCU 히스토리 기반 트렌드 데이터 (Supabase에서)
+  const {
+    data: trendData,
+    isLoading: trendLoading,
+    error: trendError,
+    refetch: refetchTrend
+  } = useQuery<{
+    type: string;
+    data: GameTrend[];
+    period: string;
+    source: string;
+    timestamp: string;
+    cached: boolean;
+  }>({
+    queryKey: ['ccu-trends-trending', periodToDays[period]],
+    queryFn: async () => {
+      const res = await fetch(`/api/analytics/ccu-history?type=top&days=${periodToDays[period]}&limit=50`);
+      if (!res.ok) throw new Error('트렌드 데이터를 불러올 수 없습니다');
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 30, // 30분
+    retry: 2,
+  });
+
+  // 트렌딩 게임 데이터 통합 (히스토리 데이터가 있으면 사용, 없으면 실시간 데이터)
   const trendingGames = useMemo((): TrendingGame[] => {
-    if (!topGames?.response?.ranks || topGames.response.ranks.length === 0) return [];
-
-    return topGames.response.ranks
-      .slice(0, 50)
-      .map((game) => {
-        // 실제로는 과거 데이터와 비교해야 하지만, 데모용으로 랜덤 변화율 사용
-        const mockPreviousCCU = game.concurrent_in_game * (0.7 + Math.random() * 0.6);
-        const ccuGrowth = ((game.concurrent_in_game - mockPreviousCCU) / mockPreviousCCU) * 100;
-
-        // 트렌딩 점수 계산 (TrendingInput에 맞게)
+    // 히스토리 기반 트렌드 데이터가 있으면 우선 사용
+    if (trendData?.data && trendData.data.length > 0) {
+      return trendData.data.map((game) => {
+        // 실제 변화율 기반 트렌딩 점수 계산
         const trendingResult = calculateTrendingScore({
-          currentCCU: game.concurrent_in_game,
-          previousCCU: mockPreviousCCU,
-          recentReviews: Math.floor(Math.random() * 100),
-          previousReviews: Math.floor(Math.random() * 80),
-          currentPrice: 29.99,
-          previousPrice: 29.99,
-          isOnSale: Math.random() > 0.7,
-          discountPercent: Math.random() > 0.7 ? Math.floor(Math.random() * 50) : 0,
-          newsCount: Math.floor(Math.random() * 5),
+          currentCCU: game.currentCCU,
+          previousCCU: game.previousCCU || game.currentCCU,
+          recentReviews: 0, // 리뷰 데이터 없음
+          previousReviews: 0,
+          currentPrice: 0,
+          previousPrice: 0,
+          isOnSale: false,
+          discountPercent: 0,
+          newsCount: 0,
         });
 
         return {
-          appId: game.appid,
-          name: game.name || `Game ${game.appid}`,
-          ccu: game.concurrent_in_game,
-          peak: game.peak_in_game,
-          ccuChange: ccuGrowth,
+          appId: game.appId,
+          name: game.name,
+          ccu: game.currentCCU,
+          peak: game.currentCCU, // 피크 데이터 없음
+          ccuChange: game.changePercent,
           trendingScore: trendingResult.score,
           grade: trendingResult.grade,
+          dataSource: 'historical' as const,
         };
-      })
-      .sort((a, b) => b.trendingScore - a.trendingScore);
-  }, [topGames]);
+      }).sort((a, b) => b.trendingScore - a.trendingScore);
+    }
 
-  // 기간별 필터링 (실제로는 기간별 데이터 필요)
-  const filteredGames = useMemo((): TrendingGame[] => {
-    const multiplier = period === '24h' ? 1 : period === '7d' ? 0.8 : 0.6;
-    return trendingGames.map((game) => ({
-      ...game,
-      trendingScore: game.trendingScore * multiplier,
-      ccuChange: game.ccuChange * multiplier,
-    }));
-  }, [trendingGames, period]);
+    // 히스토리 데이터가 없으면 실시간 데이터 사용 (변화율은 표시 안 함)
+    if (!topGames?.response?.ranks || topGames.response.ranks.length === 0) {
+      return [];
+    }
+
+    return topGames.response.ranks
+      .slice(0, 50)
+      .map((game) => ({
+        appId: game.appid,
+        name: game.name || `Game ${game.appid}`,
+        ccu: game.concurrent_in_game,
+        peak: game.peak_in_game,
+        ccuChange: 0, // 변화율 데이터 없음
+        trendingScore: Math.min(100, game.concurrent_in_game / 10000), // CCU 기반 점수
+        grade: game.concurrent_in_game > 100000 ? 'S' : game.concurrent_in_game > 50000 ? 'A' : 'B',
+        dataSource: 'realtime' as const,
+      }));
+  }, [topGames, trendData]);
+
+  // 실시간 vs 히스토리 데이터 소스 확인
+  const hasHistoricalData = trendData?.data && trendData.data.length > 0;
+  const isLoading = topGamesLoading || trendLoading;
+  const error = topGamesError || trendError;
 
   // AI 인사이트 생성 함수
   const generateTrendingInsight = async (): Promise<string> => {
-    if (filteredGames.length === 0) {
+    if (trendingGames.length === 0) {
       throw new Error('트렌딩 데이터를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
     }
 
-    const gamesForInsight = filteredGames.slice(0, 10).map((game) => ({
+    const gamesForInsight = trendingGames.slice(0, 10).map((game) => ({
       name: game.name,
       ccu: game.ccu,
       ccuChange: game.ccuChange,
-      reviewScore: Math.floor(70 + Math.random() * 25), // 모의 데이터
-      tags: ['Action', 'Adventure'], // 모의 데이터
+      reviewScore: 80, // 리뷰 데이터 없음
+      tags: ['Action', 'Adventure'], // 태그 데이터 없음
     }));
 
     const response = await fetch('/api/insight/trending', {
@@ -99,8 +153,8 @@ export default function TrendingPage() {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to generate insight');
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to generate insight');
     }
 
     const data = await response.json();
@@ -130,9 +184,25 @@ export default function TrendingPage() {
         </Tabs>
       </div>
 
+      {/* 데이터 소스 표시 */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Database className="h-3 w-3" />
+        <span>데이터 소스:</span>
+        {hasHistoricalData ? (
+          <Badge variant="outline" className="text-[10px] gap-1">
+            <ExternalLink className="h-2.5 w-2.5" />
+            일일 수집 히스토리 데이터 ({period})
+          </Badge>
+        ) : (
+          <Badge variant="secondary" className="text-[10px]">
+            실시간 CCU 데이터 (변화율 없음)
+          </Badge>
+        )}
+      </div>
+
       {/* AI 인사이트 카드 */}
-      <InsightCard 
-        title="AI 트렌딩 인사이트" 
+      <InsightCard
+        title="AI 트렌딩 인사이트"
         onGenerate={generateTrendingInsight}
       />
 
@@ -155,11 +225,14 @@ export default function TrendingPage() {
             <ErrorState
               type="server"
               title="트렌딩 데이터를 불러올 수 없습니다"
-              message={error.message}
-              onRetry={() => refetch()}
+              message={(error as Error).message}
+              onRetry={() => {
+                refetchTopGames();
+                refetchTrend();
+              }}
               compact
             />
-          ) : filteredGames.length === 0 ? (
+          ) : trendingGames.length === 0 ? (
             <EmptyState
               type="collecting"
               title="데이터 수집 중"
@@ -168,7 +241,7 @@ export default function TrendingPage() {
             />
           ) : (
             <div className="space-y-2">
-              {filteredGames.slice(0, 20).map((game, index) => (
+              {trendingGames.slice(0, 20).map((game, index) => (
                 <Link
                   key={game.appId}
                   href={`/game/${game.appId}`}
@@ -212,17 +285,23 @@ export default function TrendingPage() {
                       </div>
                     </div>
 
-                    {/* 변화율 */}
-                    <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
-                      {game.ccuChange >= 0 ? (
-                        <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
-                      ) : (
-                        <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
-                      )}
-                      <span className={`text-xs sm:text-sm ${game.ccuChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {game.ccuChange >= 0 ? '+' : ''}{game.ccuChange.toFixed(0)}%
-                      </span>
-                    </div>
+                    {/* 변화율 - 히스토리 데이터가 있을 때만 표시 */}
+                    {game.dataSource === 'historical' && game.ccuChange !== 0 ? (
+                      <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+                        {game.ccuChange >= 0 ? (
+                          <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
+                        ) : (
+                          <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
+                        )}
+                        <span className={`text-xs sm:text-sm ${game.ccuChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {game.ccuChange >= 0 ? '+' : ''}{game.ccuChange.toFixed(1)}%
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+                        <span className="text-xs text-muted-foreground">-</span>
+                      </div>
+                    )}
 
                     {/* 트렌딩 점수 */}
                     <Badge
@@ -238,6 +317,21 @@ export default function TrendingPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* 데이터 안내 */}
+      {!hasHistoricalData && trendingGames.length > 0 && (
+        <Card className="bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800">
+          <CardContent className="py-4 px-4 sm:px-6">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                <strong>참고:</strong> CCU 히스토리 데이터가 아직 수집되지 않아 실시간 CCU만 표시됩니다.
+                Vercel Cron이 매일 KST 00:00에 데이터를 자동 수집하면 변화율이 표시됩니다.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

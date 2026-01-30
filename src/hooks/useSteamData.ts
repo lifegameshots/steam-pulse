@@ -161,14 +161,15 @@ export function useFeatured() {
 
 // 게임 검색
 export function useSearch(query: string) {
+  const trimmedQuery = query.trim();
   return useQuery<SearchResult>({
-    queryKey: ['search', query],
+    queryKey: ['search', trimmedQuery],
     queryFn: async () => {
-      const res = await fetch(`/api/steam/search?q=${encodeURIComponent(query)}`);
-      if (!res.ok) throw new Error('Failed to search');
+      const res = await fetch(`/api/steam/search?q=${encodeURIComponent(trimmedQuery)}`);
+      if (!res.ok) throw new Error('검색에 실패했습니다');
       return res.json();
     },
-    enabled: query.length > 0,
+    enabled: trimmedQuery.length > 0, // 공백만 있는 경우 방지
     staleTime: 1000 * 60 * 5, // 5분 (검색 결과는 자주 안 변함)
   });
 }
@@ -248,18 +249,20 @@ export function useTopGames() {
 // 인기 게임 CCU 여러 개 조회 (배치 API 사용 - N+1 방지)
 export function useMultipleCCU(appIds: number[]) {
   return useQuery({
-    queryKey: ['multipleCCU', appIds],
+    queryKey: ['multipleCCU', [...appIds].sort()], // 순서 무관하게 캐시키 일관성 유지
     queryFn: async () => {
       // 단일 배치 요청으로 모든 CCU 조회
       const res = await fetch(`/api/steam/ccu?appIds=${appIds.join(',')}`);
       if (!res.ok) {
-        return appIds.map(appId => ({ appId, ccu: 0 }));
+        // 에러를 throw하여 React Query가 에러 상태로 처리하도록 함
+        throw new Error(`CCU 데이터를 불러올 수 없습니다 (${res.status})`);
       }
       const data = await res.json();
       return data.results as { appId: number; ccu: number }[];
     },
     enabled: appIds.length > 0,
     staleTime: 1000 * 60, // 1분 (CCU는 실시간 데이터)
+    retry: 2, // 2회 재시도
   });
 }
 

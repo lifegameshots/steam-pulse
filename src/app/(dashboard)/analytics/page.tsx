@@ -11,9 +11,8 @@ import {
   BarChart3, TrendingUp, Activity, Map, Calendar,
   ChevronRight, Clock, AlertCircle, CheckCircle2, Sparkles,
   Users, Target, Zap, Award, TrendingDown, Database, ExternalLink,
-  LineChart
+  LineChart, RefreshCw
 } from 'lucide-react';
-import { useGlobalCCU, useFeatured } from '@/hooks/useSteamData';
 import { formatNumber } from '@/lib/utils/formatters';
 import { calculateRetention, type RetentionInput } from '@/lib/algorithms/retention';
 import { calculateVolatility, type VolatilityInput } from '@/lib/algorithms/volatility';
@@ -26,6 +25,7 @@ import {
   type SteamEvent
 } from '@/lib/data/steamEvents';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { EmptyState, ErrorState } from '@/components/ui/data-states';
 import Link from 'next/link';
 
 type TabType = 'retention' | 'volatility' | 'positioning' | 'events' | 'ccu-trends';
@@ -41,71 +41,45 @@ interface GameTrend {
   history: Array<{ date: string; ccu: number }>;
 }
 
-// 모의 리텐션 데이터 생성
-function generateMockRetentionData(): RetentionInput[] {
-  const games = [
-    { appId: 730, name: 'Counter-Strike 2', avgForever: 2400, avg2Weeks: 1800, ccu: 850000, owners: '50,000,000 .. 100,000,000' },
-    { appId: 570, name: 'Dota 2', avgForever: 6000, avg2Weeks: 3600, ccu: 450000, owners: '100,000,000 .. 200,000,000' },
-    { appId: 1245620, name: 'Elden Ring', avgForever: 4800, avg2Weeks: 600, ccu: 45000, owners: '20,000,000 .. 50,000,000' },
-    { appId: 1172470, name: 'Apex Legends', avgForever: 1200, avg2Weeks: 900, ccu: 280000, owners: '50,000,000 .. 100,000,000' },
-    { appId: 892970, name: 'Valheim', avgForever: 2100, avg2Weeks: 180, ccu: 12000, owners: '10,000,000 .. 20,000,000' },
-    { appId: 1086940, name: 'Baldur\'s Gate 3', avgForever: 5400, avg2Weeks: 2400, ccu: 85000, owners: '10,000,000 .. 20,000,000' },
-    { appId: 2358720, name: 'Black Myth: Wukong', avgForever: 2400, avg2Weeks: 3600, ccu: 120000, owners: '5,000,000 .. 10,000,000' },
-    { appId: 105600, name: 'Terraria', avgForever: 1800, avg2Weeks: 300, ccu: 25000, owners: '50,000,000 .. 100,000,000' },
-    { appId: 413150, name: 'Stardew Valley', avgForever: 2700, avg2Weeks: 480, ccu: 35000, owners: '20,000,000 .. 50,000,000' },
-    { appId: 367520, name: 'Hollow Knight', avgForever: 1500, avg2Weeks: 240, ccu: 8000, owners: '5,000,000 .. 10,000,000' },
-  ];
-
-  return games.map(g => ({
-    appId: g.appId,
-    name: g.name,
-    averagePlaytimeForever: g.avgForever,
-    averagePlaytime2Weeks: g.avg2Weeks,
-    medianPlaytimeForever: g.avgForever * 0.6,
-    medianPlaytime2Weeks: g.avg2Weeks * 0.7,
-    owners: g.owners,
-    ccu: g.ccu,
-    positiveReviews: Math.floor(Math.random() * 500000) + 10000,
-    negativeReviews: Math.floor(Math.random() * 50000) + 1000,
-  }));
+// API에서 받아오는 게임 데이터 타입
+interface AnalyticsGameData {
+  appId: number;
+  name: string;
+  owners: string;
+  averagePlaytimeForever: number;
+  averagePlaytime2Weeks: number;
+  medianPlaytimeForever: number;
+  medianPlaytime2Weeks: number;
+  ccu: number;
+  price: number;
+  positiveReviews: number;
+  negativeReviews: number;
+  reviewScore: number;
+  totalReviews: number;
+  tags?: Record<string, number>;
 }
 
-// 모의 포지셔닝 데이터 생성
-function generateMockPositioningData(): PositioningGame[] {
-  return [
-    { appId: 1, name: 'Indie Darling', price: 14.99, reviewScore: 95, totalReviews: 25000, owners: '1,000,000 .. 2,000,000', tags: ['Indie', 'Roguelike'], ccu: 5000, releaseDate: '2023-05-15' },
-    { appId: 2, name: 'AAA Blockbuster', price: 59.99, reviewScore: 85, totalReviews: 150000, owners: '10,000,000 .. 20,000,000', tags: ['Action', 'AAA'], ccu: 80000, releaseDate: '2023-11-20' },
-    { appId: 3, name: 'Budget Shooter', price: 9.99, reviewScore: 72, totalReviews: 8000, owners: '500,000 .. 1,000,000', tags: ['Shooter', 'Indie'], ccu: 1500, releaseDate: '2022-08-10' },
-    { appId: 4, name: 'Premium Sim', price: 34.99, reviewScore: 88, totalReviews: 45000, owners: '2,000,000 .. 5,000,000', tags: ['Simulation', 'Management'], ccu: 12000, releaseDate: '2023-02-28' },
-    { appId: 5, name: 'Casual Puzzle', price: 4.99, reviewScore: 90, totalReviews: 12000, owners: '1,000,000 .. 2,000,000', tags: ['Casual', 'Puzzle'], ccu: 3000, releaseDate: '2021-12-05' },
-    { appId: 6, name: 'Story RPG', price: 24.99, reviewScore: 92, totalReviews: 35000, owners: '2,000,000 .. 5,000,000', tags: ['RPG', 'Story Rich'], ccu: 8000, releaseDate: '2023-07-18' },
-    { appId: 7, name: 'Survival Craft', price: 19.99, reviewScore: 78, totalReviews: 55000, owners: '5,000,000 .. 10,000,000', tags: ['Survival', 'Crafting'], ccu: 25000, releaseDate: '2020-03-22' },
-    { appId: 8, name: 'Horror Indie', price: 12.99, reviewScore: 82, totalReviews: 18000, owners: '1,000,000 .. 2,000,000', tags: ['Horror', 'Indie'], ccu: 4500, releaseDate: '2023-10-31' },
-    { appId: 9, name: 'F2P Battle', price: 0, reviewScore: 65, totalReviews: 200000, owners: '50,000,000 .. 100,000,000', tags: ['Free to Play', 'Battle Royale'], ccu: 150000, releaseDate: '2019-06-15' },
-    { appId: 10, name: 'Metroidvania Hit', price: 17.99, reviewScore: 94, totalReviews: 28000, owners: '2,000,000 .. 5,000,000', tags: ['Metroidvania', 'Action'], ccu: 6000, releaseDate: '2022-09-08' },
-  ];
-}
-
-// 변동성 데이터 생성
-function generateMockVolatilityData(): VolatilityInput[] {
-  const games = [
-    { appId: 730, name: 'Counter-Strike 2', currentCCU: 850000, peakCCU: 1500000 },
-    { appId: 1086940, name: 'Baldur\'s Gate 3', currentCCU: 85000, peakCCU: 875000 },
-    { appId: 2358720, name: 'Black Myth: Wukong', currentCCU: 120000, peakCCU: 2400000 },
-    { appId: 892970, name: 'Valheim', currentCCU: 12000, peakCCU: 500000 },
-    { appId: 1245620, name: 'Elden Ring', currentCCU: 45000, peakCCU: 950000 },
-  ];
-
-  return games.map(g => ({
-    appId: g.appId,
-    name: g.name,
-    ccuHistory: Array.from({ length: 24 }, (_, i) => ({
-      timestamp: new Date(Date.now() - i * 3600000).toISOString(),
-      ccu: g.currentCCU * (0.7 + Math.random() * 0.6),
-    })),
-    currentCCU: g.currentCCU,
-    peakCCU: g.peakCCU,
-  }));
+// 게임 데이터 가져오기 훅
+function useAnalyticsGames() {
+  return useQuery<{
+    success: boolean;
+    data: {
+      games: AnalyticsGameData[];
+      source: string;
+      timestamp: string;
+    };
+  }>({
+    queryKey: ['analytics-games'],
+    queryFn: async () => {
+      const res = await fetch('/api/analytics/games');
+      if (!res.ok) {
+        throw new Error('분석 데이터를 불러올 수 없습니다');
+      }
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 30, // 30분
+    retry: 2,
+  });
 }
 
 // 리텐션 등급 색상
@@ -170,8 +144,16 @@ export default function AnalyticsPage() {
   const [eventFilter, setEventFilter] = useState<SteamEvent['type'] | 'all'>('all');
   const [ccuPeriod, setCcuPeriod] = useState<7 | 14 | 30>(30);
 
+  // 실제 게임 데이터 가져오기
+  const {
+    data: analyticsData,
+    isLoading: gamesLoading,
+    error: gamesError,
+    refetch: refetchGames
+  } = useAnalyticsGames();
+
   // CCU 트렌드 데이터 가져오기
-  const { data: ccuTrendsData, isLoading: ccuTrendsLoading } = useQuery<{
+  const { data: ccuTrendsData, isLoading: ccuTrendsLoading, error: ccuTrendsError, refetch: refetchCcuTrends } = useQuery<{
     type: string;
     data: GameTrend[];
     period: string;
@@ -182,34 +164,89 @@ export default function AnalyticsPage() {
     queryKey: ['ccu-trends', ccuPeriod],
     queryFn: async () => {
       const res = await fetch(`/api/analytics/ccu-history?type=top&days=${ccuPeriod}&limit=20`);
-      if (!res.ok) throw new Error('Failed to fetch CCU trends');
+      if (!res.ok) throw new Error('CCU 트렌드를 불러올 수 없습니다');
       return res.json();
     },
     staleTime: 1000 * 60 * 30, // 30분
     enabled: activeTab === 'ccu-trends',
   });
 
-  // 데이터 생성
+  // 리텐션 데이터 계산 (실제 데이터 기반)
   const retentionData = useMemo(() => {
-    const inputs = generateMockRetentionData();
-    return inputs.map(input => ({
-      input,
-      result: calculateRetention(input),
-    })).sort((a, b) => b.result.retentionIndex - a.result.retentionIndex);
-  }, []);
+    if (!analyticsData?.data?.games || analyticsData.data.games.length === 0) return [];
 
+    const inputs: RetentionInput[] = analyticsData.data.games.map(game => ({
+      appId: game.appId,
+      name: game.name,
+      averagePlaytimeForever: game.averagePlaytimeForever,
+      averagePlaytime2Weeks: game.averagePlaytime2Weeks,
+      medianPlaytimeForever: game.medianPlaytimeForever,
+      medianPlaytime2Weeks: game.medianPlaytime2Weeks,
+      owners: game.owners,
+      ccu: game.ccu,
+      positiveReviews: game.positiveReviews,
+      negativeReviews: game.negativeReviews,
+    }));
+
+    return inputs
+      .map(input => ({
+        input,
+        result: calculateRetention(input),
+      }))
+      .sort((a, b) => b.result.retentionIndex - a.result.retentionIndex);
+  }, [analyticsData]);
+
+  // 변동성 데이터 계산 (실제 데이터 기반 - 단순화)
+  // Note: 변동성 계산에는 시계열 CCU 데이터가 필요하지만, 현재 API에서는 현재 CCU만 제공
+  // 따라서 현재 CCU 대비 평균적인 CCU 변동을 추정
   const volatilityData = useMemo(() => {
-    const inputs = generateMockVolatilityData();
-    return inputs.map(input => ({
-      input,
-      result: calculateVolatility(input),
-    })).sort((a, b) => b.result.stabilityScore - a.result.stabilityScore);
-  }, []);
+    if (!analyticsData?.data?.games || analyticsData.data.games.length === 0) return [];
 
+    // 상위 10개 게임만 변동성 분석 (시계열 데이터 부재로 추정치 사용)
+    const topGames = analyticsData.data.games.slice(0, 10);
+
+    return topGames.map(game => {
+      // 추정된 CCU 히스토리 생성 (현재 CCU 기준 ±20% 변동)
+      const estimatedHistory = Array.from({ length: 24 }, (_, i) => ({
+        timestamp: new Date(Date.now() - i * 3600000).toISOString(),
+        ccu: Math.round(game.ccu * (0.8 + Math.random() * 0.4)), // ±20% 변동
+      }));
+
+      const input: VolatilityInput = {
+        appId: game.appId,
+        name: game.name,
+        ccuHistory: estimatedHistory,
+        currentCCU: game.ccu,
+        peakCCU: Math.round(game.ccu * 1.5), // 피크는 현재의 1.5배로 추정
+      };
+
+      return {
+        input,
+        result: calculateVolatility(input),
+      };
+    }).sort((a, b) => b.result.stabilityScore - a.result.stabilityScore);
+  }, [analyticsData]);
+
+  // 포지셔닝 데이터 계산 (실제 데이터 기반)
   const positioningData = useMemo(() => {
-    const games = generateMockPositioningData();
+    if (!analyticsData?.data?.games || analyticsData.data.games.length === 0) {
+      return { games: [], clusters: [], marketGaps: [], insights: [] };
+    }
+
+    const games: PositioningGame[] = analyticsData.data.games.map(game => ({
+      appId: game.appId,
+      name: game.name,
+      price: game.price,
+      reviewScore: game.reviewScore,
+      totalReviews: game.totalReviews,
+      owners: game.owners,
+      tags: game.tags ? Object.keys(game.tags).slice(0, 5) : [],
+      ccu: game.ccu,
+      releaseDate: new Date().toISOString().split('T')[0], // 출시일 정보 없음
+    }));
+
     return analyzePositioning(games);
-  }, []);
+  }, [analyticsData]);
 
   const currentEvents = useMemo(() => getCurrentEvents(), []);
   const upcomingEvents = useMemo(() => getUpcomingEvents(60), []);
@@ -224,6 +261,32 @@ export default function AnalyticsPage() {
       return daysA - daysB;
     });
   }, [eventFilter]);
+
+  // 로딩/에러 상태 컴포넌트
+  const renderLoadingState = () => (
+    <div className="space-y-3">
+      {[...Array(5)].map((_, i) => (
+        <Skeleton key={i} className="h-20 w-full" />
+      ))}
+    </div>
+  );
+
+  const renderErrorState = (error: Error, onRetry: () => void) => (
+    <ErrorState
+      type="server"
+      title="데이터를 불러올 수 없습니다"
+      message={error.message}
+      onRetry={onRetry}
+    />
+  );
+
+  const renderEmptyState = () => (
+    <EmptyState
+      type="collecting"
+      title="분석 데이터 수집 중"
+      description="게임 분석 데이터를 수집하고 있습니다. 잠시 후 다시 확인해 주세요."
+    />
+  );
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -283,59 +346,70 @@ export default function AnalyticsPage() {
           {/* 리텐션 테이블 */}
           <Card>
             <CardHeader className="px-4 sm:px-6">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
-                게임별 리텐션 현황
+              <CardTitle className="flex items-center justify-between text-base sm:text-lg">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
+                  게임별 리텐션 현황
+                </div>
+                {analyticsData?.data?.source && (
+                  <Badge variant="outline" className="text-xs">
+                    {analyticsData.data.source}
+                  </Badge>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 sm:px-6">
-              <div className="space-y-2 sm:space-y-3">
-                {retentionData.map(({ input, result }, index) => {
-                  const healthBadge = getHealthBadge(result.healthStatus);
+              {gamesLoading ? renderLoadingState() :
+               gamesError ? renderErrorState(gamesError as Error, refetchGames) :
+               retentionData.length === 0 ? renderEmptyState() : (
+                <div className="space-y-2 sm:space-y-3">
+                  {retentionData.slice(0, 15).map(({ input, result }, index) => {
+                    const healthBadge = getHealthBadge(result.healthStatus);
 
-                  return (
-                    <Link
-                      key={input.appId}
-                      href={`/game/${input.appId}`}
-                      className="block"
-                    >
-                      <div className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border hover:bg-accent/50 active:bg-accent/70 transition-colors min-h-[72px]">
-                        {/* 순위 */}
-                        <div className="w-6 sm:w-8 text-center flex-shrink-0">
-                          <span className={`font-bold text-base sm:text-lg ${
-                            index < 3 ? 'text-purple-500' : 'text-muted-foreground'
-                          }`}>
-                            {index + 1}
-                          </span>
-                        </div>
-
-                        {/* 게임 정보 */}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm sm:text-base truncate">{input.name}</p>
-                          <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
-                            <span>CCU: {formatNumber(input.ccu)}</span>
-                            <Badge className={`${healthBadge.className} text-xs`}>
-                              {healthBadge.label}
-                            </Badge>
+                    return (
+                      <Link
+                        key={input.appId}
+                        href={`/game/${input.appId}`}
+                        className="block"
+                      >
+                        <div className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border hover:bg-accent/50 active:bg-accent/70 transition-colors min-h-[72px]">
+                          {/* 순위 */}
+                          <div className="w-6 sm:w-8 text-center flex-shrink-0">
+                            <span className={`font-bold text-base sm:text-lg ${
+                              index < 3 ? 'text-purple-500' : 'text-muted-foreground'
+                            }`}>
+                              {index + 1}
+                            </span>
                           </div>
-                        </div>
 
-                        {/* 리텐션 지수 */}
-                        <div className="text-right flex-shrink-0">
-                          <p className={`text-lg sm:text-2xl font-bold ${getRetentionColor(result.retentionGrade)}`}>
-                            {result.retentionIndex.toFixed(0)}%
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            등급 {result.retentionGrade}
-                          </p>
-                        </div>
+                          {/* 게임 정보 */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm sm:text-base truncate">{input.name}</p>
+                            <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
+                              <span>CCU: {formatNumber(input.ccu)}</span>
+                              <Badge className={`${healthBadge.className} text-xs`}>
+                                {healthBadge.label}
+                              </Badge>
+                            </div>
+                          </div>
 
-                        <ChevronRight className="h-4 w-4 text-muted-foreground hidden sm:block" />
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
+                          {/* 리텐션 지수 */}
+                          <div className="text-right flex-shrink-0">
+                            <p className={`text-lg sm:text-2xl font-bold ${getRetentionColor(result.retentionGrade)}`}>
+                              {result.retentionIndex.toFixed(0)}%
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              등급 {result.retentionGrade}
+                            </p>
+                          </div>
+
+                          <ChevronRight className="h-4 w-4 text-muted-foreground hidden sm:block" />
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -355,6 +429,9 @@ export default function AnalyticsPage() {
                     변동성 = 표준편차 / 평균 × 100 (변동계수)
                   </p>
                   <p className="mt-2 hidden sm:block">낮으면 안정적, 높으면 이벤트/세일 의존도가 큼</p>
+                  <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
+                    * 시계열 데이터 제한으로 추정치를 사용합니다
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -369,77 +446,83 @@ export default function AnalyticsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 sm:px-6">
-              <div className="space-y-2 sm:space-y-3">
-                {volatilityData.map(({ input, result }, index) => {
-                  const volBadge = getVolatilityBadge(result.volatilityGrade);
+              {gamesLoading ? renderLoadingState() :
+               gamesError ? renderErrorState(gamesError as Error, refetchGames) :
+               volatilityData.length === 0 ? renderEmptyState() : (
+                <div className="space-y-2 sm:space-y-3">
+                  {volatilityData.map(({ input, result }, index) => {
+                    const volBadge = getVolatilityBadge(result.volatilityGrade);
 
-                  return (
-                    <Link
-                      key={input.appId}
-                      href={`/game/${input.appId}`}
-                      className="block"
-                    >
-                      <div className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border hover:bg-accent/50 active:bg-accent/70 transition-colors min-h-[72px]">
-                        {/* 순위 */}
-                        <div className="w-6 sm:w-8 text-center flex-shrink-0">
-                          <span className={`font-bold text-base sm:text-lg ${
-                            index < 3 ? 'text-green-500' : 'text-muted-foreground'
-                          }`}>
-                            {index + 1}
-                          </span>
-                        </div>
-
-                        {/* 게임 정보 */}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm sm:text-base truncate">{input.name}</p>
-                          <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
-                            <span>현재: {formatNumber(input.currentCCU)}</span>
-                            <span className="hidden sm:inline">피크: {formatNumber(input.peakCCU)}</span>
-                            <Badge className={`${volBadge.className} text-xs`}>
-                              {volBadge.label}
-                            </Badge>
+                    return (
+                      <Link
+                        key={input.appId}
+                        href={`/game/${input.appId}`}
+                        className="block"
+                      >
+                        <div className="flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg border hover:bg-accent/50 active:bg-accent/70 transition-colors min-h-[72px]">
+                          {/* 순위 */}
+                          <div className="w-6 sm:w-8 text-center flex-shrink-0">
+                            <span className={`font-bold text-base sm:text-lg ${
+                              index < 3 ? 'text-green-500' : 'text-muted-foreground'
+                            }`}>
+                              {index + 1}
+                            </span>
                           </div>
-                        </div>
 
-                        {/* 안정성 점수 */}
-                        <div className="text-right flex-shrink-0">
-                          <p className={`text-lg sm:text-2xl font-bold ${
-                            result.stabilityScore >= 70 ? 'text-green-500' :
-                            result.stabilityScore >= 50 ? 'text-blue-500' :
-                            result.stabilityScore >= 30 ? 'text-yellow-500' : 'text-red-500'
-                          }`}>
-                            {result.stabilityScore.toFixed(0)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">안정성</p>
-                        </div>
+                          {/* 게임 정보 */}
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm sm:text-base truncate">{input.name}</p>
+                            <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground mt-1 flex-wrap">
+                              <span>현재: {formatNumber(input.currentCCU)}</span>
+                              <span className="hidden sm:inline">피크: {formatNumber(input.peakCCU)}</span>
+                              <Badge className={`${volBadge.className} text-xs`}>
+                                {volBadge.label}
+                              </Badge>
+                            </div>
+                          </div>
 
-                        <ChevronRight className="h-4 w-4 text-muted-foreground hidden sm:block" />
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
+                          {/* 안정성 점수 */}
+                          <div className="text-right flex-shrink-0">
+                            <p className={`text-lg sm:text-2xl font-bold ${
+                              result.stabilityScore >= 70 ? 'text-green-500' :
+                              result.stabilityScore >= 50 ? 'text-blue-500' :
+                              result.stabilityScore >= 30 ? 'text-yellow-500' : 'text-red-500'
+                            }`}>
+                              {result.stabilityScore.toFixed(0)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">안정성</p>
+                          </div>
+
+                          <ChevronRight className="h-4 w-4 text-muted-foreground hidden sm:block" />
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* 변동성 신호 */}
-          <Card>
-            <CardHeader className="px-4 sm:px-6">
-              <CardTitle className="text-base sm:text-lg">주요 신호</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 sm:px-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {volatilityData.flatMap(({ input, result }) =>
-                  result.signals.map((signal, i) => (
-                    <div key={`${input.appId}-${i}`} className="flex items-center gap-2 p-2 bg-muted rounded-lg text-sm">
-                      <span className="font-medium truncate">{input.name}</span>
-                      <span className="text-muted-foreground">{signal}</span>
-                    </div>
-                  ))
-                ).slice(0, 6)}
-              </div>
-            </CardContent>
-          </Card>
+          {volatilityData.length > 0 && (
+            <Card>
+              <CardHeader className="px-4 sm:px-6">
+                <CardTitle className="text-base sm:text-lg">주요 신호</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 sm:px-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {volatilityData.flatMap(({ input, result }) =>
+                    result.signals.map((signal, i) => (
+                      <div key={`${input.appId}-${i}`} className="flex items-center gap-2 p-2 bg-muted rounded-lg text-sm">
+                        <span className="font-medium truncate">{input.name}</span>
+                        <span className="text-muted-foreground">{signal}</span>
+                      </div>
+                    ))
+                  ).slice(0, 6)}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
@@ -476,11 +559,9 @@ export default function AnalyticsPage() {
           </div>
 
           {ccuTrendsLoading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full" />
-              ))}
-            </div>
+            renderLoadingState()
+          ) : ccuTrendsError ? (
+            renderErrorState(ccuTrendsError as Error, refetchCcuTrends)
           ) : ccuTrendsData?.data && ccuTrendsData.data.length > 0 ? (
             <>
               {/* 급상승/급하락 요약 */}
@@ -654,92 +735,98 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
 
-          {/* 클러스터 분석 */}
-          <Card>
-            <CardHeader className="px-4 sm:px-6">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Target className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
-                시장 클러스터
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 sm:px-6">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {positioningData.clusters.map((cluster) => (
-                  <div key={cluster.name} className="p-3 bg-muted rounded-lg">
-                    <p className="font-medium text-sm">{cluster.name}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {cluster.games.length}개 게임
-                    </p>
-                    <div className="flex items-center gap-2 mt-2 text-xs">
-                      <span>평균 ${cluster.avgPrice.toFixed(0)}</span>
-                      <span>평점 {cluster.avgScore.toFixed(0)}%</span>
-                    </div>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {cluster.characteristics.map((char, i) => (
-                        <Badge key={i} variant="outline" className="text-xs">
-                          {char}
-                        </Badge>
-                      ))}
-                    </div>
+          {gamesLoading ? renderLoadingState() :
+           gamesError ? renderErrorState(gamesError as Error, refetchGames) :
+           positioningData.clusters.length === 0 ? renderEmptyState() : (
+            <>
+              {/* 클러스터 분석 */}
+              <Card>
+                <CardHeader className="px-4 sm:px-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Target className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
+                    시장 클러스터
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 sm:px-6">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {positioningData.clusters.map((cluster) => (
+                      <div key={cluster.name} className="p-3 bg-muted rounded-lg">
+                        <p className="font-medium text-sm">{cluster.name}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {cluster.games.length}개 게임
+                        </p>
+                        <div className="flex items-center gap-2 mt-2 text-xs">
+                          <span>평균 ${cluster.avgPrice.toFixed(0)}</span>
+                          <span>평점 {cluster.avgScore.toFixed(0)}%</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {cluster.characteristics.map((char, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">
+                              {char}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          {/* 시장 공백 */}
-          <Card>
-            <CardHeader className="px-4 sm:px-6">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
-                시장 공백 (기회)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 sm:px-6">
-              <div className="space-y-3">
-                {positioningData.marketGaps.map((gap, index) => (
-                  <div
-                    key={index}
-                    className={`p-3 rounded-lg border-l-4 ${
-                      gap.opportunity === 'high' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' :
-                      gap.opportunity === 'medium' ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20' :
-                      'border-gray-500 bg-gray-50 dark:bg-gray-950/20'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Badge className={
-                        gap.opportunity === 'high' ? 'bg-green-500' :
-                        gap.opportunity === 'medium' ? 'bg-yellow-500' : 'bg-gray-500'
-                      }>
-                        {gap.opportunity === 'high' ? '높음' : gap.opportunity === 'medium' ? '보통' : '낮음'}
-                      </Badge>
-                      <span className="text-sm font-medium">
-                        ${gap.priceRange[0]}-${gap.priceRange[1]} / {gap.scoreRange[0]}-{gap.scoreRange[1]}%
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">{gap.description}</p>
+              {/* 시장 공백 */}
+              <Card>
+                <CardHeader className="px-4 sm:px-6">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
+                    시장 공백 (기회)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 sm:px-6">
+                  <div className="space-y-3">
+                    {positioningData.marketGaps.map((gap, index) => (
+                      <div
+                        key={index}
+                        className={`p-3 rounded-lg border-l-4 ${
+                          gap.opportunity === 'high' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' :
+                          gap.opportunity === 'medium' ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20' :
+                          'border-gray-500 bg-gray-50 dark:bg-gray-950/20'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Badge className={
+                            gap.opportunity === 'high' ? 'bg-green-500' :
+                            gap.opportunity === 'medium' ? 'bg-yellow-500' : 'bg-gray-500'
+                          }>
+                            {gap.opportunity === 'high' ? '높음' : gap.opportunity === 'medium' ? '보통' : '낮음'}
+                          </Badge>
+                          <span className="text-sm font-medium">
+                            ${gap.priceRange[0]}-${gap.priceRange[1]} / {gap.scoreRange[0]}-{gap.scoreRange[1]}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">{gap.description}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          {/* 인사이트 */}
-          <Card>
-            <CardHeader className="px-4 sm:px-6">
-              <CardTitle className="text-base sm:text-lg">시장 인사이트</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 sm:px-6">
-              <ul className="space-y-2">
-                {positioningData.insights.map((insight, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    {insight}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+              {/* 인사이트 */}
+              <Card>
+                <CardHeader className="px-4 sm:px-6">
+                  <CardTitle className="text-base sm:text-lg">시장 인사이트</CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 sm:px-6">
+                  <ul className="space-y-2">
+                    {positioningData.insights.map((insight, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm">
+                        <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        {insight}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       )}
 
