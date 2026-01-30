@@ -6,16 +6,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { 
-  Users, Star, DollarSign, Calendar, Building2, 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Users, Star, DollarSign, Calendar, Building2,
   Tag, ExternalLink, TrendingUp, Clock,
   Monitor, Apple, Terminal, Newspaper, MessageSquare,
-  Youtube, Globe, RefreshCw
+  Youtube, Globe, RefreshCw, Gamepad2, Palette, UserCircle, Film
 } from 'lucide-react';
 import { useAppDetails } from '@/hooks/useSteamData';
 import { formatNumber, formatCurrency, parseOwnersRange } from '@/lib/utils/formatters';
 import { CCUChart } from '@/components/charts/CCUChart';
 import { WatchlistButton } from '@/components/cards/WatchlistButton';
+import { CoreFunPanel } from '@/components/corefun/CoreFunPanel';
+import { DesignAnalysisPanel } from '@/components/design/DesignAnalysisPanel';
+import { PlayerDNAPanel } from '@/components/persona/PlayerDNAPanel';
+import { ReviewMatrixPanel } from '@/components/youtube/ReviewMatrixPanel';
 import Link from 'next/link';
 
 // 뉴스 아이템 타입
@@ -268,9 +273,26 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
 
   const positiveRatio = game.reviews?.positivePercent || 0;
 
+  // 게임 데이터 객체 (하위 컴포넌트에 전달)
+  const gameData = {
+    appId,
+    name: game.name,
+    headerImage: game.headerImage,
+    description: game.shortDescription || game.description || '',
+    tags: displayTags.map(t => t.name),
+    genres: game.genres?.map(g => typeof g === 'string' ? g : g.description) || [],
+    developers: game.developers || [],
+    publishers: game.publishers || [],
+    releaseDate: game.releaseDate?.date || '',
+    price: game.price,
+    reviews: game.reviews,
+    currentPlayers: currentCCU,
+    steamSpy: game.steamSpy,
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* ========== 1. 헤더 영역 ========== */}
+      {/* ========== 1. 헤더 영역 (항상 표시) ========== */}
       <Card className="overflow-hidden">
         <div className="relative">
           {game.backgroundRaw && (
@@ -437,8 +459,35 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
         </div>
       </Card>
 
-      {/* ========== 2. 태그 분석 ========== */}
-      <Card>
+      {/* ========== 탭 영역 ========== */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-5 bg-slate-800/50">
+          <TabsTrigger value="overview" className="text-xs sm:text-sm">
+            <TrendingUp className="w-4 h-4 mr-1 hidden sm:inline" />
+            개요
+          </TabsTrigger>
+          <TabsTrigger value="corefun" className="text-xs sm:text-sm">
+            <Gamepad2 className="w-4 h-4 mr-1 hidden sm:inline" />
+            핵심 재미
+          </TabsTrigger>
+          <TabsTrigger value="design" className="text-xs sm:text-sm">
+            <Palette className="w-4 h-4 mr-1 hidden sm:inline" />
+            디자인
+          </TabsTrigger>
+          <TabsTrigger value="persona" className="text-xs sm:text-sm">
+            <UserCircle className="w-4 h-4 mr-1 hidden sm:inline" />
+            페르소나
+          </TabsTrigger>
+          <TabsTrigger value="youtube" className="text-xs sm:text-sm">
+            <Film className="w-4 h-4 mr-1 hidden sm:inline" />
+            리뷰
+          </TabsTrigger>
+        </TabsList>
+
+        {/* 개요 탭 */}
+        <TabsContent value="overview" className="space-y-4 sm:space-y-6 mt-4">
+          {/* 태그 분석 */}
+          <Card>
         <CardHeader className="px-4 sm:px-6">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
             <Tag className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
@@ -657,6 +706,40 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
           </Card>
         )}
       </div>
+        </TabsContent>
+
+        {/* 핵심 재미 분석 탭 */}
+        <TabsContent value="corefun" className="mt-4">
+          <CoreFunPanel
+            appId={appId}
+            gameName={game.name}
+          />
+        </TabsContent>
+
+        {/* 디자인 분석 탭 */}
+        <TabsContent value="design" className="mt-4">
+          <DesignAnalysisPanel
+            appId={appId}
+            gameName={game.name}
+          />
+        </TabsContent>
+
+        {/* 플레이어 페르소나 탭 */}
+        <TabsContent value="persona" className="mt-4">
+          <PlayerDNAPanel
+            appId={appId}
+            gameName={game.name}
+          />
+        </TabsContent>
+
+        {/* YouTube 리뷰 분석 탭 */}
+        <TabsContent value="youtube" className="mt-4">
+          <ReviewMatrixPanel
+            appId={appId}
+            gameName={game.name}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

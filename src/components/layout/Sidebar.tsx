@@ -20,6 +20,10 @@ import {
   CalendarDays,
   Heart,
   Gift,
+  FolderKanban,
+  Bell,
+  FileText,
+  FlaskConical,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -38,7 +42,141 @@ interface NavItem {
   tooltip: string;
 }
 
-// 메뉴 순서: 시장현황, 트렌딩, 위시리스트 분석, 고급 분석, Free To Play, 경쟁사 분석, 기회 발굴, 이벤트 캘린더, 관심 목록, 기대작 추적, 세일 모니터
+// 메뉴 그룹 정의
+interface NavGroup {
+  title: string;
+  items: NavItem[];
+}
+
+const navGroups: NavGroup[] = [
+  {
+    title: '시장 분석',
+    items: [
+      {
+        href: '/',
+        label: '시장 현황',
+        labelKr: '시장 현황',
+        icon: LayoutDashboard,
+        tooltip: '실시간 Steam 동접자, 인기 게임, 트렌드 태그를 한눈에 확인하세요',
+      },
+      {
+        href: '/trending',
+        label: '트렌딩',
+        labelKr: '트렌딩',
+        icon: TrendingUp,
+        tooltip: 'CCU 급상승 게임과 시장 트렌드를 분석합니다',
+      },
+      {
+        href: '/wishlist-analysis',
+        label: '위시리스트 분석',
+        labelKr: '위시리스트 분석',
+        icon: Heart,
+        tooltip: '위시리스트 순위, 전환율, 기대작 트렌드 분석',
+      },
+      {
+        href: '/analytics',
+        label: '고급 분석',
+        labelKr: '고급 분석',
+        icon: BarChart3,
+        tooltip: '리텐션, 변동성, 포지셔닝 등 심층 분석',
+      },
+    ],
+  },
+  {
+    title: '게임 분석',
+    items: [
+      {
+        href: '/f2p',
+        label: 'Free To Play',
+        labelKr: 'Free To Play',
+        icon: Gift,
+        tooltip: 'F2P 게임의 수익화 전략과 유료 상품 구조를 분석합니다',
+      },
+      {
+        href: '/competitors',
+        label: '경쟁사 분석',
+        labelKr: '경쟁사 분석',
+        icon: Building2,
+        tooltip: '퍼블리셔/개발사별 게임 포트폴리오를 분석합니다',
+      },
+      {
+        href: '/opportunities',
+        label: '기회 발굴',
+        labelKr: '기회 발굴',
+        icon: Target,
+        tooltip: '경쟁이 낮고 수요가 높은 블루오션 시장을 찾아보세요',
+      },
+      {
+        href: '/scenario',
+        label: '시나리오 분석',
+        labelKr: '시나리오 분석',
+        icon: FlaskConical,
+        tooltip: '가격 변경, 할인, 경쟁작 출시 등 시나리오 시뮬레이션',
+      },
+    ],
+  },
+  {
+    title: '관리 도구',
+    items: [
+      {
+        href: '/projects',
+        label: '프로젝트',
+        labelKr: '프로젝트',
+        icon: FolderKanban,
+        tooltip: '게임을 그룹화하여 경쟁 분석 및 리포트 생성',
+      },
+      {
+        href: '/alerts',
+        label: '알림 센터',
+        labelKr: '알림 센터',
+        icon: Bell,
+        tooltip: '가격 변동, CCU 급등/급락 등 실시간 알림',
+      },
+      {
+        href: '/reports',
+        label: '리포트',
+        labelKr: '리포트',
+        icon: FileText,
+        tooltip: '시장 분석, 경쟁사 비교 리포트 생성',
+      },
+      {
+        href: '/watchlist',
+        label: '관심 목록',
+        labelKr: '관심 목록',
+        icon: Star,
+        tooltip: '관심 게임을 추적하고 변동 알림을 받으세요',
+      },
+    ],
+  },
+  {
+    title: '이벤트',
+    items: [
+      {
+        href: '/calendar',
+        label: '이벤트 캘린더',
+        labelKr: '이벤트 캘린더',
+        icon: CalendarDays,
+        tooltip: 'Steam 세일, 페스티벌, 시상식 등 주요 이벤트 일정',
+      },
+      {
+        href: '/hype',
+        label: '기대작 추적',
+        labelKr: '기대작 추적',
+        icon: Rocket,
+        tooltip: '출시 예정 게임의 기대도와 예상 판매량을 확인하세요',
+      },
+      {
+        href: '/sales',
+        label: '세일 모니터',
+        labelKr: '세일 모니터',
+        icon: Tag,
+        tooltip: '현재 진행 중인 세일과 할인율을 모니터링합니다',
+      },
+    ],
+  },
+];
+
+// 플랫 리스트 (호환성 유지)
 const navItems: NavItem[] = [
   {
     href: '/',
@@ -184,40 +322,47 @@ export function Sidebar() {
         </div>
 
         {/* 네비게이션 */}
-        <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-240px)]">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
+        <nav className="p-4 space-y-4 overflow-y-auto max-h-[calc(100vh-240px)]">
+          {navGroups.map((group) => (
+            <div key={group.title}>
+              <h3 className="px-4 mb-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                {group.title}
+              </h3>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const isActive = pathname === item.href;
+                  const Icon = item.icon;
 
-            return (
-              <Tooltip key={item.href}>
-                <TooltipTrigger asChild>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors',
-                      // 터치 타겟 크기 확대 (모바일)
-                      'min-h-[48px]',
-                      isActive
-                        ? 'bg-indigo-500/10 text-indigo-400'
-                        : 'text-slate-400 hover:bg-slate-800 hover:text-white active:bg-slate-700'
-                    )}
-                  >
-                    <Icon className="w-5 h-5 flex-shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                </TooltipTrigger>
-                {/* 데스크톱에서만 툴팁 표시 */}
-                <TooltipContent
-                  side="right"
-                  className="max-w-[200px] text-xs hidden lg:block"
-                  sideOffset={8}
-                >
-                  <p>{item.tooltip}</p>
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
+                  return (
+                    <Tooltip key={item.href}>
+                      <TooltipTrigger asChild>
+                        <Link
+                          href={item.href}
+                          className={cn(
+                            'flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                            'min-h-[40px]',
+                            isActive
+                              ? 'bg-indigo-500/10 text-indigo-400'
+                              : 'text-slate-400 hover:bg-slate-800 hover:text-white active:bg-slate-700'
+                          )}
+                        >
+                          <Icon className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="right"
+                        className="max-w-[200px] text-xs hidden lg:block"
+                        sideOffset={8}
+                      >
+                        <p>{item.tooltip}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* 하단 정보 */}
