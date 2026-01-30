@@ -1,6 +1,10 @@
 /**
  * Chzzk (네이버 라이브) API 서비스
  * 한국 스트리밍 플랫폼 데이터 조회
+ *
+ * 최적화:
+ * - Redis 캐싱으로 API 호출 최소화
+ * - 타임아웃 처리로 무한 대기 방지
  */
 
 import type {
@@ -10,14 +14,46 @@ import type {
   StreamerInfo,
   GameStreamingSummary,
 } from '@/types/streaming';
+import { getOrSet } from '@/lib/redis';
+import { CACHE_TTL } from '@/lib/utils/constants';
 
 const CHZZK_CLIENT_ID = process.env.CHZZK_CLIENT_ID || '';
 const CHZZK_CLIENT_SECRET = process.env.CHZZK_CLIENT_SECRET || '';
 const CHZZK_API_BASE = 'https://api.chzzk.naver.com';
 const CHZZK_OPEN_API_BASE = 'https://openapi.chzzk.naver.com';
 
+// API 타임아웃 설정
+const API_TIMEOUT = 5000; // 5초
+
 // 토큰 캐시
 let cachedToken: { token: string; expiresAt: number } | null = null;
+
+/**
+ * 타임아웃을 적용한 fetch 래퍼
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeout: number = API_TIMEOUT
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Chzzk API timeout');
+    }
+    throw error;
+  }
+}
 
 /**
  * Chzzk OAuth 토큰 발급
@@ -28,17 +64,21 @@ async function getAccessToken(): Promise<string> {
     return cachedToken.token;
   }
 
-  const response = await fetch('https://openapi.chzzk.naver.com/auth/v1/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const response = await fetchWithTimeout(
+    'https://openapi.chzzk.naver.com/auth/v1/token',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        grantType: 'CLIENT_CREDENTIALS',
+        clientId: CHZZK_CLIENT_ID,
+        clientSecret: CHZZK_CLIENT_SECRET,
+      }),
     },
-    body: JSON.stringify({
-      grantType: 'CLIENT_CREDENTIALS',
-      clientId: CHZZK_CLIENT_ID,
-      clientSecret: CHZZK_CLIENT_SECRET,
-    }),
-  });
+    10000 // 토큰 발급은 10초 타임아웃
+  );
 
   if (!response.ok) {
     console.error('Chzzk token error:', response.status);
@@ -65,14 +105,13 @@ async function getAccessToken(): Promise<string> {
 async function chzzkAuthFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
   const token = await getAccessToken();
 
-  const response = await fetch(`${CHZZK_OPEN_API_BASE}${endpoint}`, {
+  const response = await fetchWithTimeout(`${CHZZK_OPEN_API_BASE}${endpoint}`, {
     ...options,
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
       ...options?.headers,
     },
-    next: { revalidate: 60 },
   });
 
   if (!response.ok) {
@@ -92,11 +131,10 @@ async function chzzkAuthFetch<T>(endpoint: string, options?: RequestInit): Promi
  * Chzzk 공개 API 요청 헬퍼 (인증 불필요)
  */
 async function chzzkFetch<T>(endpoint: string): Promise<T> {
-  const response = await fetch(`${CHZZK_API_BASE}${endpoint}`, {
+  const response = await fetchWithTimeout(`${CHZZK_API_BASE}${endpoint}`, {
     headers: {
       'Content-Type': 'application/json',
     },
-    next: { revalidate: 60 },
   });
 
   if (!response.ok) {
@@ -132,19 +170,27 @@ export async function getLivesByCategory(
 }
 
 /**
- * 인기 라이브 목록 조회
+ * 인기 라이브 목록 조회 (캐싱 적용)
  */
 export async function getPopularLives(options?: { size?: number }): Promise<ChzzkLive[]> {
-  try {
-    const size = options?.size || 20;
-    const data = await chzzkFetch<{ data: ChzzkLive[] }>(
-      `/service/v1/lives/popular?size=${size}`
-    );
-    return data.data || [];
-  } catch (error) {
-    console.error('Failed to get popular Chzzk lives:', error);
-    return [];
-  }
+  const size = options?.size || 20;
+  const cacheKey = `streaming:chzzk:popular:${size}`;
+
+  return getOrSet(
+    cacheKey,
+    async () => {
+      try {
+        const data = await chzzkFetch<{ data: ChzzkLive[] }>(
+          `/service/v1/lives/popular?size=${size}`
+        );
+        return data.data || [];
+      } catch (error) {
+        console.error('Failed to get popular Chzzk lives:', error);
+        return [];
+      }
+    },
+    CACHE_TTL.STREAMING_TOP_GAMES
+  );
 }
 
 /**
@@ -300,7 +346,7 @@ export async function searchStreams(
 }
 
 /**
- * 인기 게임 스트리밍 목록 조회
+ * 인기 게임 스트리밍 목록 조회 (캐싱 적용)
  */
 export async function getTopGameStreams(): Promise<Array<{
   categoryName: string;
@@ -308,34 +354,42 @@ export async function getTopGameStreams(): Promise<Array<{
   viewerCount: number;
   streamCount: number;
 }>> {
-  try {
-    const lives = await getPopularLives({ size: 100 });
+  const cacheKey = 'streaming:chzzk:top-games';
 
-    // 카테고리별 집계
-    const categoryMap = new Map<string, { name: string; viewers: number; count: number }>();
+  return getOrSet(
+    cacheKey,
+    async () => {
+      try {
+        const lives = await getPopularLives({ size: 100 });
 
-    lives.forEach(live => {
-      const categoryId = live.liveCategory;
-      const categoryName = live.liveCategoryValue || live.liveCategory;
+        // 카테고리별 집계
+        const categoryMap = new Map<string, { name: string; viewers: number; count: number }>();
 
-      if (categoryId) {
-        const existing = categoryMap.get(categoryId) || { name: categoryName, viewers: 0, count: 0 };
-        existing.viewers += live.concurrentUserCount;
-        existing.count += 1;
-        categoryMap.set(categoryId, existing);
+        lives.forEach(live => {
+          const categoryId = live.liveCategory;
+          const categoryName = live.liveCategoryValue || live.liveCategory;
+
+          if (categoryId) {
+            const existing = categoryMap.get(categoryId) || { name: categoryName, viewers: 0, count: 0 };
+            existing.viewers += live.concurrentUserCount;
+            existing.count += 1;
+            categoryMap.set(categoryId, existing);
+          }
+        });
+
+        return Array.from(categoryMap.entries())
+          .map(([categoryId, data]) => ({
+            categoryId,
+            categoryName: data.name,
+            viewerCount: data.viewers,
+            streamCount: data.count,
+          }))
+          .sort((a, b) => b.viewerCount - a.viewerCount);
+      } catch (error) {
+        console.error('Failed to get top Chzzk game streams:', error);
+        return [];
       }
-    });
-
-    return Array.from(categoryMap.entries())
-      .map(([categoryId, data]) => ({
-        categoryId,
-        categoryName: data.name,
-        viewerCount: data.viewers,
-        streamCount: data.count,
-      }))
-      .sort((a, b) => b.viewerCount - a.viewerCount);
-  } catch (error) {
-    console.error('Failed to get top Chzzk game streams:', error);
-    return [];
-  }
+    },
+    CACHE_TTL.STREAMING_TOP_GAMES
+  );
 }

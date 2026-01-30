@@ -1,6 +1,11 @@
 /**
  * Twitch API 서비스
  * Helix API를 사용하여 스트림, 게임, 사용자 정보 조회
+ *
+ * 최적화:
+ * - Redis 캐싱으로 API 호출 최소화
+ * - 타임아웃 처리로 무한 대기 방지
+ * - 병렬 요청 최적화
  */
 
 import type {
@@ -12,13 +17,45 @@ import type {
   StreamerInfo,
   GameStreamingSummary,
 } from '@/types/streaming';
+import { getOrSet } from '@/lib/redis';
+import { CACHE_TTL } from '@/lib/utils/constants';
 
 const TWITCH_CLIENT_ID = process.env.TWITCH_CLIENT_ID || '';
 const TWITCH_CLIENT_SECRET = process.env.TWITCH_CLIENT_SECRET || '';
 const TWITCH_API_BASE = 'https://api.twitch.tv/helix';
 
+// API 타임아웃 설정
+const API_TIMEOUT = 5000; // 5초
+
 // 토큰 캐시
 let cachedToken: { token: string; expiresAt: number } | null = null;
+
+/**
+ * 타임아웃을 적용한 fetch 래퍼
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeout: number = API_TIMEOUT
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Twitch API timeout');
+    }
+    throw error;
+  }
+}
 
 /**
  * Twitch OAuth 토큰 발급
@@ -29,17 +66,21 @@ async function getAccessToken(): Promise<string> {
     return cachedToken.token;
   }
 
-  const response = await fetch('https://id.twitch.tv/oauth2/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+  const response = await fetchWithTimeout(
+    'https://id.twitch.tv/oauth2/token',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: TWITCH_CLIENT_ID,
+        client_secret: TWITCH_CLIENT_SECRET,
+        grant_type: 'client_credentials',
+      }),
     },
-    body: new URLSearchParams({
-      client_id: TWITCH_CLIENT_ID,
-      client_secret: TWITCH_CLIENT_SECRET,
-      grant_type: 'client_credentials',
-    }),
-  });
+    10000 // 토큰 발급은 10초 타임아웃
+  );
 
   if (!response.ok) {
     throw new Error(`Twitch token error: ${response.status}`);
@@ -68,12 +109,11 @@ async function twitchFetch<T>(endpoint: string, params?: Record<string, string>)
     });
   }
 
-  const response = await fetch(url.toString(), {
+  const response = await fetchWithTimeout(url.toString(), {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Client-Id': TWITCH_CLIENT_ID,
     },
-    next: { revalidate: 60 }, // 1분 캐시
   });
 
   if (!response.ok) {
@@ -165,7 +205,7 @@ export async function getUsersByIds(userIds: string[]): Promise<TwitchUser[]> {
       chunk.forEach(id => url.searchParams.append('id', id));
 
       const token = await getAccessToken();
-      const response = await fetch(url.toString(), {
+      const response = await fetchWithTimeout(url.toString(), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Client-Id': TWITCH_CLIENT_ID,
@@ -290,35 +330,66 @@ export async function getGameStreamingSummary(
 }
 
 /**
- * 인기 게임 스트리밍 목록 조회
+ * 인기 게임 스트리밍 목록 조회 (최적화 버전)
+ * - 상위 스트림에서 게임별 집계 (20개 게임 * 100스트림 호출 대신 단일 요청)
  */
 export async function getTopGameStreams(): Promise<Array<{
   game: TwitchGame;
   viewerCount: number;
   streamCount: number;
 }>> {
-  try {
-    // 상위 게임 목록 조회
-    const gamesData = await twitchFetch<{ data: TwitchGame[] }>('/games/top', {
-      first: '20',
-    });
+  const cacheKey = 'streaming:twitch:top-games';
 
-    const results = await Promise.all(
-      gamesData.data.map(async (game) => {
-        const streams = await getStreamsByGame(game.id, { first: 100 });
-        return {
-          game,
-          viewerCount: streams.reduce((sum, s) => sum + s.viewer_count, 0),
-          streamCount: streams.length,
-        };
-      })
-    );
+  return getOrSet(
+    cacheKey,
+    async () => {
+      try {
+        // 최적화: 상위 100개 스트림에서 게임별 집계 (20개 게임 개별 조회 대신)
+        const streamsData = await twitchFetch<{ data: TwitchStream[] }>('/streams', {
+          first: '100',
+        });
 
-    return results.sort((a, b) => b.viewerCount - a.viewerCount);
-  } catch (error) {
-    console.error('Failed to get top game streams:', error);
-    return [];
-  }
+        // 게임별 집계
+        const gameMap = new Map<string, {
+          game: TwitchGame;
+          viewers: number;
+          count: number
+        }>();
+
+        for (const stream of streamsData.data) {
+          const existing = gameMap.get(stream.game_id);
+          if (existing) {
+            existing.viewers += stream.viewer_count;
+            existing.count += 1;
+          } else {
+            gameMap.set(stream.game_id, {
+              game: {
+                id: stream.game_id,
+                name: stream.game_name,
+                box_art_url: '', // 스트림에서는 box_art 없음
+                igdb_id: '',
+              },
+              viewers: stream.viewer_count,
+              count: 1,
+            });
+          }
+        }
+
+        return Array.from(gameMap.values())
+          .map(item => ({
+            game: item.game,
+            viewerCount: item.viewers,
+            streamCount: item.count,
+          }))
+          .sort((a, b) => b.viewerCount - a.viewerCount)
+          .slice(0, 20);
+      } catch (error) {
+        console.error('Failed to get top game streams:', error);
+        return [];
+      }
+    },
+    CACHE_TTL.STREAMING_TOP_GAMES
+  );
 }
 
 /**

@@ -81,6 +81,10 @@ export const CACHE_TTL = {
   INSIGHT_COMPETITOR: 14400,  // 4시간
   INSIGHT_HYPE: 3600,         // 1시간
   INSIGHT_WATCHLIST: 3600,    // 1시간
+  // 스트리밍 데이터
+  STREAMING_DASHBOARD: 120,   // 2분 (빈번히 갱신되는 라이브 데이터)
+  STREAMING_TOP_GAMES: 120,   // 2분
+  STREAMING_SEARCH: 60,       // 1분
 } as const;
 
 // 기본 알림 설정

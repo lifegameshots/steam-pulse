@@ -1,16 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Radio,
   TrendingUp,
-  Users,
-  Monitor,
-  Eye,
   Search,
-  ExternalLink,
   RefreshCw,
+  AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,10 +17,15 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { StreamingOverview } from '@/components/streaming/StreamingOverview';
 import { TopGamesTable } from '@/components/streaming/TopGamesTable';
 import { LiveStreamList } from '@/components/streaming/LiveStreamList';
+import { EmptyState, ErrorState } from '@/components/ui/data-states';
 import type { StreamingDashboardData } from '@/types/streaming';
+
+// 로딩 타임아웃 (15초)
+const LOADING_TIMEOUT = 15000;
 
 export default function StreamingPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [hasTimedOut, setHasTimedOut] = useState(false);
 
   const {
     data: dashboard,
@@ -36,10 +38,32 @@ export default function StreamingPage() {
     queryFn: async () => {
       const res = await fetch('/api/streaming/dashboard');
       if (!res.ok) throw new Error('Failed to fetch streaming data');
-      return res.json() as Promise<StreamingDashboardData>;
+      const data = await res.json();
+      // 에러 응답 체크
+      if (data.error) throw new Error(data.error);
+      return data as StreamingDashboardData;
     },
     refetchInterval: 60000, // 1분마다 자동 갱신
+    staleTime: 30000, // 30초간 fresh
+    retry: 2,
+    retryDelay: 1000,
   });
+
+  // 로딩 타임아웃 처리
+  useEffect(() => {
+    if (!isLoading) {
+      setHasTimedOut(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      if (isLoading) {
+        setHasTimedOut(true);
+      }
+    }, LOADING_TIMEOUT);
+
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   const {
     data: searchResults,
@@ -47,13 +71,19 @@ export default function StreamingPage() {
   } = useQuery({
     queryKey: ['streaming-search', searchQuery],
     queryFn: async () => {
-      if (!searchQuery || searchQuery.length < 2) return null;
-      const res = await fetch(`/api/streaming/search?game=${encodeURIComponent(searchQuery)}&limit=10`);
+      if (!searchQuery || searchQuery.trim().length < 2) return null;
+      const res = await fetch(`/api/streaming/search?game=${encodeURIComponent(searchQuery.trim())}&limit=10`);
       if (!res.ok) return null;
       return res.json();
     },
-    enabled: searchQuery.length >= 2,
+    enabled: searchQuery.trim().length >= 2,
+    staleTime: 30000,
   });
+
+  // 데이터가 비어있는지 확인
+  const isEmpty = dashboard &&
+    dashboard.topGames.length === 0 &&
+    dashboard.trendingGames.length === 0;
 
   return (
     <div className="space-y-6">
@@ -90,10 +120,13 @@ export default function StreamingPage() {
           </div>
 
           {/* 검색 결과 */}
-          {searchQuery.length >= 2 && (
+          {searchQuery.trim().length >= 2 && (
             <div className="mt-4">
               {searching ? (
-                <p className="text-slate-400 text-sm">검색 중...</p>
+                <div className="flex items-center gap-2 text-slate-400 text-sm">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  검색 중...
+                </div>
               ) : searchResults?.streams?.length > 0 ? (
                 <LiveStreamList streams={searchResults.streams} compact />
               ) : (
@@ -104,7 +137,18 @@ export default function StreamingPage() {
         </CardContent>
       </Card>
 
-      {isLoading ? (
+      {/* 타임아웃 상태 */}
+      {hasTimedOut && isLoading ? (
+        <ErrorState
+          type="timeout"
+          title="응답 시간 초과"
+          message="스트리밍 API 응답이 지연되고 있습니다. 네트워크 상태를 확인하거나 잠시 후 다시 시도해주세요."
+          onRetry={() => {
+            setHasTimedOut(false);
+            refetch();
+          }}
+        />
+      ) : isLoading ? (
         <div className="space-y-6">
           {/* 스켈레톤 로딩 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -113,17 +157,29 @@ export default function StreamingPage() {
             ))}
           </div>
           <Skeleton className="h-96 bg-slate-700" />
+          <p className="text-center text-slate-500 text-sm">
+            Twitch, Chzzk 데이터를 불러오는 중...
+          </p>
         </div>
       ) : error ? (
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Radio className="w-12 h-12 text-slate-600 mb-4" />
-            <p className="text-slate-400 mb-4">스트리밍 데이터를 불러올 수 없습니다</p>
-            <Button onClick={() => refetch()} className="bg-purple-600 hover:bg-purple-700">
-              다시 시도
-            </Button>
-          </CardContent>
-        </Card>
+        <ErrorState
+          type="server"
+          title="스트리밍 데이터 오류"
+          message="스트리밍 데이터를 불러올 수 없습니다. API 키 설정을 확인하거나 잠시 후 다시 시도해주세요."
+          error={error as Error}
+          onRetry={() => refetch()}
+          showDetails={process.env.NODE_ENV === 'development'}
+        />
+      ) : isEmpty ? (
+        <EmptyState
+          type="collecting"
+          title="스트리밍 데이터 없음"
+          description="현재 스트리밍 데이터를 가져올 수 없습니다. Twitch/Chzzk API 연결 상태를 확인해주세요."
+          action={{
+            label: '새로고침',
+            onClick: () => refetch(),
+          }}
+        />
       ) : dashboard ? (
         <>
           {/* 개요 통계 */}
@@ -133,33 +189,35 @@ export default function StreamingPage() {
           <TopGamesTable games={dashboard.topGames} />
 
           {/* 트렌딩 게임 */}
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-green-500" />
-                트렌딩 게임
-              </CardTitle>
-              <CardDescription className="text-slate-400">
-                실시간으로 인기가 상승 중인 게임
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {dashboard.trendingGames.map((game) => (
-                  <Badge
-                    key={game.gameName}
-                    variant="outline"
-                    className="border-green-500/50 text-green-400 px-3 py-1"
-                  >
-                    {game.gameName}
-                    <span className="ml-2 text-xs opacity-70">
-                      {formatNumber(game.currentViewers)} 시청
-                    </span>
-                  </Badge>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          {dashboard.trendingGames.length > 0 && (
+            <Card className="bg-slate-800/50 border-slate-700">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-green-500" />
+                  트렌딩 게임
+                </CardTitle>
+                <CardDescription className="text-slate-400">
+                  실시간으로 인기가 상승 중인 게임
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {dashboard.trendingGames.map((game) => (
+                    <Badge
+                      key={game.gameName}
+                      variant="outline"
+                      className="border-green-500/50 text-green-400 px-3 py-1"
+                    >
+                      {game.gameName}
+                      <span className="ml-2 text-xs opacity-70">
+                        {formatNumber(game.currentViewers)} 시청
+                      </span>
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </>
       ) : null}
     </div>
