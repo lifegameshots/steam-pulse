@@ -21,7 +21,9 @@ import { CoreFunPanel } from '@/components/corefun/CoreFunPanel';
 import { DesignAnalysisPanel } from '@/components/design/DesignAnalysisPanel';
 import { PlayerDNAPanel } from '@/components/persona/PlayerDNAPanel';
 import { ReviewMatrixPanel } from '@/components/youtube/ReviewMatrixPanel';
+import { GameStreamingPanel } from '@/components/streaming/GameStreamingPanel';
 import Link from 'next/link';
+import { Radio } from 'lucide-react';
 
 // 뉴스 아이템 타입
 interface NewsItem {
@@ -461,7 +463,7 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
 
       {/* ========== 탭 영역 ========== */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 bg-slate-800/50">
+        <TabsList className="grid w-full grid-cols-6 bg-slate-800/50">
           <TabsTrigger value="overview" className="text-xs sm:text-sm">
             <TrendingUp className="w-4 h-4 mr-1 hidden sm:inline" />
             개요
@@ -477,6 +479,10 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
           <TabsTrigger value="persona" className="text-xs sm:text-sm">
             <UserCircle className="w-4 h-4 mr-1 hidden sm:inline" />
             페르소나
+          </TabsTrigger>
+          <TabsTrigger value="streaming" className="text-xs sm:text-sm">
+            <Radio className="w-4 h-4 mr-1 hidden sm:inline" />
+            스트리밍
           </TabsTrigger>
           <TabsTrigger value="youtube" className="text-xs sm:text-sm">
             <Film className="w-4 h-4 mr-1 hidden sm:inline" />
@@ -727,6 +733,14 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
         {/* 플레이어 페르소나 탭 */}
         <TabsContent value="persona" className="mt-4">
           <PlayerDNAPanel
+            appId={appId}
+            gameName={game.name}
+          />
+        </TabsContent>
+
+        {/* 스트리밍 탭 */}
+        <TabsContent value="streaming" className="mt-4">
+          <GameStreamingPanel
             appId={appId}
             gameName={game.name}
           />

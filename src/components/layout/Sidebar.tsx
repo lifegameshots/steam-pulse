@@ -24,6 +24,7 @@ import {
   Bell,
   FileText,
   FlaskConical,
+  Radio,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -65,6 +66,13 @@ const navGroups: NavGroup[] = [
         labelKr: '트렌딩',
         icon: TrendingUp,
         tooltip: 'CCU 급상승 게임과 시장 트렌드를 분석합니다',
+      },
+      {
+        href: '/streaming',
+        label: '스트리밍',
+        labelKr: '스트리밍',
+        icon: Radio,
+        tooltip: 'Twitch, Chzzk 실시간 스트리밍 데이터 분석',
       },
       {
         href: '/wishlist-analysis',

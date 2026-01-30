@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, Trash2, ExternalLink, Bell, BellOff } from 'lucide-react';
+import { Star, Trash2, ExternalLink, Bell, BellOff, BarChart3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useWatchlist } from '@/hooks/useWatchlist';
 import { formatNumber, formatDate } from '@/lib/utils/formatters';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { BasketAnalysisPanel } from '@/components/watchlist/BasketAnalysisPanel';
 
 export default function WatchlistPage() {
   const { 
@@ -169,6 +170,11 @@ export default function WatchlistPage() {
           </Card>
         ))}
       </div>
+
+      {/* 바스켓 분석 패널 */}
+      {watchlist.length > 0 && (
+        <BasketAnalysisPanel gameCount={watchlist.length} />
+      )}
 
       {/* 하단 안내 */}
       {watchlist.length > 0 && (
