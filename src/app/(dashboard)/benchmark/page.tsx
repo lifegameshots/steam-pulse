@@ -98,7 +98,7 @@ export default function BenchmarkPage() {
       const res = await fetch(`/api/steam/search?q=${encodeURIComponent(query)}`);
       if (!res.ok) throw new Error('Search failed');
       const data = await res.json();
-      setSearchResults(data.results?.slice(0, 6) || []);
+      setSearchResults(data.items?.slice(0, 6) || []);
     } catch (error) {
       console.error('Search error:', error);
       setSearchResults([]);

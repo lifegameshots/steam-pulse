@@ -36,7 +36,7 @@ export default function ScenarioPage() {
       const res = await fetch(`/api/steam/search?q=${encodeURIComponent(searchQuery)}`);
       if (!res.ok) return [];
       const data = await res.json();
-      return data.results || [];
+      return data.items || [];
     },
     enabled: searchQuery.length >= 2,
   });
