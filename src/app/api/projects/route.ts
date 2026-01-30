@@ -23,11 +23,21 @@ export async function GET(request: NextRequest) {
 
     // 현재 사용자 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    // 인증되지 않은 경우 빈 목록 반환 (로그인 페이지로 리다이렉트하지 않고)
     if (authError || !user) {
+      console.log('Projects API: User not authenticated, returning empty list');
       return NextResponse.json({
-        success: false,
-        error: '인증이 필요합니다',
-      }, { status: 401 });
+        success: true,
+        data: {
+          projects: [],
+          total: 0,
+          page: 1,
+          pageSize: 20,
+        },
+        cached: false,
+        message: '로그인 후 프로젝트를 관리할 수 있습니다',
+      });
     }
 
     // 쿼리 파라미터
@@ -61,12 +71,36 @@ export async function GET(request: NextRequest) {
 
     const { data: projectsData, error, count } = await query;
 
+    // 테이블이 없거나 에러 발생 시 빈 배열 반환
     if (error) {
       console.error('Projects fetch error:', error);
+      // 테이블이 없는 경우 (42P01) 또는 기타 에러
+      if (error.code === '42P01' || error.message?.includes('does not exist')) {
+        console.log('Projects table does not exist, returning empty list');
+        return NextResponse.json({
+          success: true,
+          data: {
+            projects: [],
+            total: 0,
+            page,
+            pageSize,
+          },
+          cached: false,
+          message: '프로젝트 기능을 사용하려면 데이터베이스 설정이 필요합니다',
+        });
+      }
+      // 다른 에러의 경우에도 빈 배열 반환 (사용자 경험 개선)
       return NextResponse.json({
-        success: false,
-        error: 'Failed to fetch projects',
-      }, { status: 500 });
+        success: true,
+        data: {
+          projects: [],
+          total: 0,
+          page,
+          pageSize,
+        },
+        cached: false,
+        message: '프로젝트를 불러오는 중 문제가 발생했습니다',
+      });
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -215,9 +249,16 @@ export async function POST(request: NextRequest) {
 
     if (error || !projectResult) {
       console.error('Project creation error:', error);
+      // 테이블이 없는 경우
+      if (error?.code === '42P01' || error?.message?.includes('does not exist')) {
+        return NextResponse.json({
+          success: false,
+          error: '프로젝트 기능을 사용하려면 데이터베이스 설정이 필요합니다. 관리자에게 문의하세요.',
+        }, { status: 503 });
+      }
       return NextResponse.json({
         success: false,
-        error: 'Failed to create project',
+        error: '프로젝트 생성에 실패했습니다',
       }, { status: 500 });
     }
 
