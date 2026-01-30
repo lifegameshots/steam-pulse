@@ -451,3 +451,76 @@ export function matchGameFeelKeywords(text: string): KeywordMatchResult[] {
 
   return results;
 }
+
+// ========== V2 점수 계산 시스템 ==========
+
+/**
+ * Steam 평점 등급 타입
+ */
+export type SteamRatingTier =
+  | 'overwhelmingly_positive'
+  | 'very_positive'
+  | 'mostly_positive'
+  | 'mixed'
+  | 'mostly_negative'
+  | 'very_negative'
+  | 'overwhelmingly_negative';
+
+/**
+ * 게임 메타 데이터 (V2 점수 계산용)
+ */
+export interface GameMetaData {
+  // Steam 리뷰 요약
+  totalReviews: number;
+  totalPositive: number;
+  reviewScoreDesc: string; // "Overwhelmingly Positive" 등
+
+  // 선택적 추가 데이터
+  metacriticScore?: number; // 0-100
+  ccu?: number; // 동시 접속자
+  owners?: string; // "1,000,000 .. 2,000,000" 형태
+  averagePlaytime?: number; // 분 단위
+
+  // 장르 정보
+  genres: string[];
+  tags: string[];
+}
+
+/**
+ * Steam 평점 등급별 기준 점수 범위
+ */
+export const STEAM_TIER_RANGES: Record<SteamRatingTier, { min: number; max: number; ratioMin: number; ratioMax: number }> = {
+  overwhelmingly_positive: { min: 88, max: 95, ratioMin: 0.95, ratioMax: 1.0 },
+  very_positive: { min: 75, max: 87, ratioMin: 0.80, ratioMax: 0.94 },
+  mostly_positive: { min: 65, max: 74, ratioMin: 0.70, ratioMax: 0.79 },
+  mixed: { min: 45, max: 64, ratioMin: 0.40, ratioMax: 0.69 },
+  mostly_negative: { min: 30, max: 44, ratioMin: 0.20, ratioMax: 0.39 },
+  very_negative: { min: 20, max: 29, ratioMin: 0.10, ratioMax: 0.19 },
+  overwhelmingly_negative: { min: 10, max: 19, ratioMin: 0, ratioMax: 0.09 },
+};
+
+/**
+ * Steam 평점 문자열을 등급으로 변환
+ */
+export function parseReviewScoreDesc(desc: string): SteamRatingTier {
+  const lower = desc.toLowerCase();
+  if (lower.includes('overwhelmingly positive')) return 'overwhelmingly_positive';
+  if (lower.includes('very positive')) return 'very_positive';
+  if (lower.includes('mostly positive')) return 'mostly_positive';
+  if (lower.includes('mixed')) return 'mixed';
+  if (lower.includes('mostly negative')) return 'mostly_negative';
+  if (lower.includes('very negative')) return 'very_negative';
+  if (lower.includes('overwhelmingly negative')) return 'overwhelmingly_negative';
+  return 'mixed'; // 기본값
+}
+
+/**
+ * V2 점수 분해 (디버깅/UI용)
+ */
+export interface ScoreBreakdown {
+  baseScore: number;
+  qualityAdjustment: number;
+  mdaContribution: number;
+  gameFeelContribution: number;
+  tier: SteamRatingTier;
+}

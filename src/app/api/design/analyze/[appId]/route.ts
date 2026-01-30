@@ -1,12 +1,14 @@
 // DesignPulse: 게임 디자인 분석 API
 // POST /api/design/analyze/[appId]
+// V2: 메타데이터 기반 개선된 점수 계산 시스템
 
 import { NextRequest, NextResponse } from 'next/server';
 import { redis } from '@/lib/redis';
 import {
-  analyzeGameDesign,
+  analyzeGameDesignV2,
   type ReviewInput,
-  type DesignAnalysisResult,
+  type DesignAnalysisResultV2,
+  type GameMetaData,
 } from '@/lib/algorithms/designAnalyzer';
 import {
   generateStandardizedInsight,
@@ -14,6 +16,7 @@ import {
 } from '@/lib/api/gemini';
 
 const CACHE_TTL = 21600; // 6시간
+const CACHE_KEY_VERSION = 'v2'; // 캐시 버전 (V2 전환용)
 
 interface SteamReview {
   recommendationid: string;
@@ -62,7 +65,7 @@ async function fetchReviews(appId: string, count: number = 100): Promise<ReviewI
 /**
  * 게임 정보 가져오기
  */
-async function fetchGameInfo(appId: string): Promise<{ name: string; genres: string[]; tags: string[] }> {
+async function fetchGameInfo(appId: string): Promise<{ name: string; genres: string[]; tags: string[]; metacriticScore?: number }> {
   const url = `https://store.steampowered.com/api/appdetails?appids=${appId}`;
 
   const response = await fetch(url, { next: { revalidate: 3600 } });
@@ -86,6 +89,79 @@ async function fetchGameInfo(appId: string): Promise<{ name: string; genres: str
     name: gameData.name || `Game ${appId}`,
     genres,
     tags,
+    metacriticScore: gameData.metacritic?.score,
+  };
+}
+
+/**
+ * [V2] Steam 리뷰 요약 가져오기 (총 리뷰 수, 긍정 비율, 평점 등급)
+ */
+async function fetchReviewSummary(appId: string): Promise<{
+  totalReviews: number;
+  totalPositive: number;
+  reviewScoreDesc: string;
+}> {
+  const url = `https://store.steampowered.com/appreviews/${appId}?json=1&language=all&purchase_type=all&num_per_page=0`;
+
+  try {
+    const response = await fetch(url, { next: { revalidate: 300 } });
+    if (!response.ok) {
+      return { totalReviews: 0, totalPositive: 0, reviewScoreDesc: 'Mixed' };
+    }
+
+    const data = await response.json();
+    if (!data.success || !data.query_summary) {
+      return { totalReviews: 0, totalPositive: 0, reviewScoreDesc: 'Mixed' };
+    }
+
+    return {
+      totalReviews: data.query_summary.total_reviews || 0,
+      totalPositive: data.query_summary.total_positive || 0,
+      reviewScoreDesc: data.query_summary.review_score_desc || 'Mixed',
+    };
+  } catch (error) {
+    console.error('Failed to fetch review summary:', error);
+    return { totalReviews: 0, totalPositive: 0, reviewScoreDesc: 'Mixed' };
+  }
+}
+
+/**
+ * [V2] CCU (동시 접속자 수) 가져오기
+ */
+async function fetchCCU(appId: string): Promise<number> {
+  const url = `https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid=${appId}`;
+
+  try {
+    const response = await fetch(url, { next: { revalidate: 60 } });
+    if (!response.ok) return 0;
+
+    const data = await response.json();
+    return data.response?.player_count || 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * [V2] 통합 메타데이터 수집
+ */
+async function fetchGameMetaData(
+  appId: string,
+  gameInfo: { genres: string[]; tags: string[]; metacriticScore?: number }
+): Promise<GameMetaData> {
+  const [reviewSummary, ccu] = await Promise.all([
+    fetchReviewSummary(appId),
+    fetchCCU(appId),
+  ]);
+
+  return {
+    totalReviews: reviewSummary.totalReviews,
+    totalPositive: reviewSummary.totalPositive,
+    reviewScoreDesc: reviewSummary.reviewScoreDesc,
+    metacriticScore: gameInfo.metacriticScore,
+    ccu,
+    genres: gameInfo.genres,
+    tags: gameInfo.tags,
   };
 }
 
@@ -104,10 +180,11 @@ export async function POST(
       // Body가 없어도 괜찮음
     }
 
-    const cacheKey = `design:${appId}`;
+    // V2 캐시 키 (기존 V1 캐시와 분리)
+    const cacheKey = `design:${CACHE_KEY_VERSION}:${appId}`;
 
     // 캐시 확인
-    const cached = await redis.get<DesignAnalysisResult>(cacheKey);
+    const cached = await redis.get<DesignAnalysisResultV2>(cacheKey);
     if (cached) {
       return NextResponse.json({
         success: true,
@@ -116,9 +193,12 @@ export async function POST(
       });
     }
 
-    // 게임 정보 및 리뷰 가져오기
-    const [gameInfo, reviews] = await Promise.all([
-      fetchGameInfo(appId),
+    // 게임 정보 가져오기
+    const gameInfo = await fetchGameInfo(appId);
+
+    // [V2] 메타데이터 및 리뷰 병렬 수집
+    const [metadata, reviews] = await Promise.all([
+      fetchGameMetaData(appId, gameInfo),
       fetchReviews(appId, options.reviewCount || 100),
     ]);
 
@@ -129,8 +209,8 @@ export async function POST(
       }, { status: 404 });
     }
 
-    // 디자인 분석 실행
-    const result = analyzeGameDesign(appId, gameInfo.name, reviews, {
+    // [V2] 개선된 디자인 분석 실행
+    const result = analyzeGameDesignV2(appId, gameInfo.name, reviews, metadata, {
       genres: gameInfo.genres,
       tags: gameInfo.tags,
       includeRecommendations: true,
@@ -155,6 +235,10 @@ export async function POST(
             gameFeelScores: result.gameFeelScores,
             genreBenchmark: result.genreBenchmark,
             reviewsAnalyzed: result.reviewsAnalyzed,
+            // V2 추가 정보
+            scoreBreakdown: result.scoreBreakdown,
+            steamRating: result.metadata.reviewScoreDesc,
+            metacriticScore: result.metadata.metacriticScore,
           }, null, 2)
         );
       } catch (err) {
@@ -188,9 +272,9 @@ export async function GET(
 ) {
   try {
     const { appId } = await params;
-    const cacheKey = `design:${appId}`;
+    const cacheKey = `design:${CACHE_KEY_VERSION}:${appId}`;
 
-    const cached = await redis.get<DesignAnalysisResult>(cacheKey);
+    const cached = await redis.get<DesignAnalysisResultV2>(cacheKey);
 
     if (cached) {
       return NextResponse.json({

@@ -12,6 +12,12 @@ import {
   matchMDAKeywords,
   matchGameFeelKeywords,
   type KeywordMatchResult,
+  // V2 점수 계산 시스템
+  type GameMetaData,
+  type SteamRatingTier,
+  type ScoreBreakdown,
+  STEAM_TIER_RANGES,
+  parseReviewScoreDesc,
 } from '@/lib/data/mdaKeywords';
 
 /**
@@ -468,3 +474,353 @@ export function gameFeelToBarData(scores: GameFeelScores): Array<{ name: string;
 // 타입 및 상수 내보내기
 export { MDA_LABELS, GAME_FEEL_LABELS, getDQSGrade };
 export type { MDAType, GameFeelType };
+
+// ========== V2 점수 계산 시스템 ==========
+
+/**
+ * V2 디자인 분석 결과 (메타데이터 기반)
+ */
+export interface DesignAnalysisResultV2 extends DesignAnalysisResult {
+  scoreBreakdown: ScoreBreakdown;
+  metadata: GameMetaData;
+}
+
+/**
+ * [V2] 1층: Steam 평점 기반 기준 점수 계산 (60-95)
+ *
+ * Steam 평점 등급에 따라 기준 점수를 결정합니다.
+ * - Overwhelmingly Positive (95%+): 88-95점
+ * - Very Positive (80-94%): 75-87점
+ * - Mostly Positive (70-79%): 65-74점
+ * - Mixed (40-69%): 45-64점
+ * - Mostly Negative (20-39%): 30-44점
+ * - Very Negative (10-19%): 20-29점
+ * - Overwhelmingly Negative (<10%): 10-19점
+ */
+export function calculateBaseScore(meta: GameMetaData): { score: number; tier: SteamRatingTier } {
+  const tier = parseReviewScoreDesc(meta.reviewScoreDesc);
+  const range = STEAM_TIER_RANGES[tier];
+
+  // 긍정 비율 계산
+  const positiveRatio = meta.totalReviews > 0
+    ? meta.totalPositive / meta.totalReviews
+    : 0.5;
+
+  // tier 범위 내에서 positiveRatio에 따른 위치 계산
+  const tierRatioRange = range.ratioMax - range.ratioMin;
+  const position = tierRatioRange > 0
+    ? Math.min(1, Math.max(0, (positiveRatio - range.ratioMin) / tierRatioRange))
+    : 0.5;
+
+  // 기준 점수 계산
+  const score = Math.round(range.min + (range.max - range.min) * position);
+
+  return { score, tier };
+}
+
+/**
+ * [V2] 2층: 품질 보정 점수 계산 (±10)
+ *
+ * Metacritic 점수, 리뷰 수, CCU 등을 기반으로 보정합니다.
+ * - Metacritic 90+: +5, 80+: +3, 70+: +1
+ * - 리뷰 수 100,000+: +3, 50,000+: +2, 10,000+: +1
+ * - CCU 50,000+: +2, 10,000+: +1
+ * - 리뷰 수 100 미만: -5 (신뢰도 낮음)
+ */
+export function calculateQualityAdjustment(meta: GameMetaData): number {
+  let adjustment = 0;
+
+  // Metacritic 점수 보정
+  if (meta.metacriticScore) {
+    if (meta.metacriticScore >= 90) {
+      adjustment += 5;
+    } else if (meta.metacriticScore >= 80) {
+      adjustment += 3;
+    } else if (meta.metacriticScore >= 70) {
+      adjustment += 1;
+    } else if (meta.metacriticScore < 50) {
+      adjustment -= 3;
+    }
+  }
+
+  // 리뷰 수 기반 신뢰도 보정
+  if (meta.totalReviews >= 100000) {
+    adjustment += 3;
+  } else if (meta.totalReviews >= 50000) {
+    adjustment += 2;
+  } else if (meta.totalReviews >= 10000) {
+    adjustment += 1;
+  } else if (meta.totalReviews < 100) {
+    adjustment -= 5; // 리뷰 수가 너무 적으면 신뢰도 페널티
+  }
+
+  // CCU 기반 활성도 보정
+  if (meta.ccu) {
+    if (meta.ccu >= 50000) {
+      adjustment += 2;
+    } else if (meta.ccu >= 10000) {
+      adjustment += 1;
+    }
+  }
+
+  // -10 ~ +10 범위로 제한
+  return Math.max(-10, Math.min(10, adjustment));
+}
+
+/**
+ * [V2] 3층: 기준점 기반 MDA 점수 계산
+ *
+ * 기존: 모든 요소 50점에서 시작
+ * V2: baseScore에서 시작, 키워드 매칭으로 ±15 조정
+ */
+export function calculateEnhancedMDAScores(
+  baseScore: number,
+  matches: KeywordMatchResult[],
+  genres: string[]
+): MDAScores {
+  // 기준 점수로 초기화 (50이 아닌 baseScore!)
+  const scores: MDAScores = {
+    sensation: baseScore,
+    fantasy: baseScore,
+    narrative: baseScore,
+    challenge: baseScore,
+    fellowship: baseScore,
+    discovery: baseScore,
+    expression: baseScore,
+    submission: baseScore,
+  };
+
+  // 키워드 매칭 결과 집계
+  const counts: Record<string, { positive: number; negative: number }> = {};
+
+  for (const match of matches) {
+    if (!counts[match.type]) {
+      counts[match.type] = { positive: 0, negative: 0 };
+    }
+    if (match.sentiment === 'positive') {
+      counts[match.type].positive++;
+    } else {
+      counts[match.type].negative++;
+    }
+  }
+
+  // 키워드 기반 조정 (±15 범위)
+  for (const [type, count] of Object.entries(counts)) {
+    const mdaType = type as MDAType;
+    const total = count.positive + count.negative;
+    if (total === 0) continue;
+
+    const positiveRatio = count.positive / total;
+    // 긍정 비율에 따라 -15 ~ +15 조정
+    const adjustment = (positiveRatio - 0.5) * 30;
+
+    // 매칭 수에 따른 가중치 (V2: 더 관대한 기준)
+    // 5개 이상이면 최대 확신 (기존 10개에서 완화)
+    const confidence = Math.min(total / 5, 1);
+
+    scores[mdaType] = Math.round(baseScore + adjustment * confidence);
+    scores[mdaType] = Math.max(0, Math.min(100, scores[mdaType]));
+  }
+
+  // 장르 기대치 반영 (약간의 보너스/페널티)
+  for (const genre of genres) {
+    const expected = GENRE_MDA_EXPECTATIONS[genre];
+    if (expected) {
+      for (const [key, expectedValue] of Object.entries(expected)) {
+        const mdaType = key as MDAType;
+        // 장르에서 중요한 요소면 약간의 보너스
+        if (expectedValue >= 0.7 && scores[mdaType] >= baseScore) {
+          scores[mdaType] = Math.min(100, scores[mdaType] + 5);
+        }
+      }
+    }
+  }
+
+  return scores;
+}
+
+/**
+ * [V2] 3층: 기준점 기반 Game Feel 점수 계산
+ */
+export function calculateEnhancedGameFeelScores(
+  baseScore: number,
+  matches: KeywordMatchResult[]
+): GameFeelScores {
+  // 기준 점수로 초기화
+  const scores: GameFeelScores = {
+    gameFeel: baseScore,
+    juice: baseScore,
+    responsiveness: baseScore,
+    polish: baseScore,
+    weight: baseScore,
+    feedback: baseScore,
+  };
+
+  // 키워드 매칭 결과 집계
+  const counts: Record<string, { positive: number; negative: number }> = {};
+
+  for (const match of matches) {
+    if (!counts[match.type]) {
+      counts[match.type] = { positive: 0, negative: 0 };
+    }
+    if (match.sentiment === 'positive') {
+      counts[match.type].positive++;
+    } else {
+      counts[match.type].negative++;
+    }
+  }
+
+  // 키워드 기반 조정 (±15 범위)
+  for (const [type, count] of Object.entries(counts)) {
+    const feelType = type as GameFeelType;
+    if (!(feelType in scores)) continue;
+
+    const total = count.positive + count.negative;
+    if (total === 0) continue;
+
+    const positiveRatio = count.positive / total;
+    const adjustment = (positiveRatio - 0.5) * 30;
+    const confidence = Math.min(total / 5, 1);
+
+    scores[feelType] = Math.round(baseScore + adjustment * confidence);
+    scores[feelType] = Math.max(0, Math.min(100, scores[feelType]));
+  }
+
+  return scores;
+}
+
+/**
+ * [V2] 최종 DQS 계산
+ *
+ * 기존: MDA 60% + GameFeel 40%
+ * V2: 조정된 기준점 + MDA 차이 60% + GameFeel 차이 40%
+ */
+export function calculateEnhancedDQS(
+  baseScore: number,
+  qualityAdjustment: number,
+  mdaScores: MDAScores,
+  gameFeelScores: GameFeelScores
+): number {
+  const adjustedBase = baseScore + qualityAdjustment;
+
+  // MDA 평균
+  const mdaValues = Object.values(mdaScores);
+  const mdaAvg = mdaValues.reduce((a, b) => a + b, 0) / mdaValues.length;
+
+  // Game Feel 평균
+  const gameFeelValues = Object.values(gameFeelScores);
+  const gameFeelAvg = gameFeelValues.reduce((a, b) => a + b, 0) / gameFeelValues.length;
+
+  // 기준점 대비 차이를 가중 반영
+  const mdaDiff = (mdaAvg - baseScore) * 0.6;
+  const gameFeelDiff = (gameFeelAvg - baseScore) * 0.4;
+
+  const dqs = adjustedBase + mdaDiff + gameFeelDiff;
+
+  return Math.round(Math.max(0, Math.min(100, dqs)));
+}
+
+/**
+ * [V2] 통합 게임 디자인 분석
+ *
+ * 메타데이터 기반의 개선된 분석을 수행합니다.
+ */
+export function analyzeGameDesignV2(
+  appId: string,
+  gameName: string,
+  reviews: ReviewInput[],
+  metadata: GameMetaData,
+  options: AnalysisOptions = {}
+): DesignAnalysisResultV2 {
+  // 1층: 기준 점수 계산
+  const { score: baseScore, tier } = calculateBaseScore(metadata);
+
+  // 2층: 품질 보정
+  const qualityAdjustment = calculateQualityAdjustment(metadata);
+
+  // 모든 리뷰 텍스트 합치기
+  const allText = reviews.map(r => r.content).join('\n');
+
+  // 키워드 매칭
+  const mdaMatches = matchMDAKeywords(allText);
+  const gameFeelMatches = matchGameFeelKeywords(allText);
+
+  // 장르 정보
+  const genres = options.genres || metadata.genres || [];
+
+  // 3층: 기준점 기반 MDA/GameFeel 점수 계산
+  const mdaScores = calculateEnhancedMDAScores(baseScore, mdaMatches, genres);
+  const gameFeelScores = calculateEnhancedGameFeelScores(baseScore, gameFeelMatches);
+
+  // 최종 DQS 계산
+  const dqs = calculateEnhancedDQS(baseScore, qualityAdjustment, mdaScores, gameFeelScores);
+  const dqsGrade = getDQSGrade(dqs);
+
+  // 주요/약점 MDA 찾기 (기준점 대비)
+  const mdaPrimary = (Object.entries(mdaScores) as [MDAType, number][])
+    .filter(([, score]) => score >= baseScore + 10)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([type]) => type);
+
+  const mdaWeaknesses = (Object.entries(mdaScores) as [MDAType, number][])
+    .filter(([, score]) => score < baseScore - 10)
+    .sort((a, b) => a[1] - b[1])
+    .slice(0, 3)
+    .map(([type]) => type);
+
+  // Game Feel 전체 점수
+  const gameFeelOverall = Math.round(
+    Object.values(gameFeelScores).reduce((a, b) => a + b, 0) / 6
+  );
+
+  // 장르 벤치마크 비교
+  const genreBenchmark = genres.length > 0
+    ? {
+        genres,
+        ...compareWithGenreBenchmark(mdaScores, genres),
+      }
+    : undefined;
+
+  // 권고사항 생성
+  const recommendations = options.includeRecommendations !== false
+    ? generateRecommendations(mdaScores, gameFeelScores, mdaWeaknesses, genres)
+    : [];
+
+  // 점수 breakdown
+  const mdaAvg = Object.values(mdaScores).reduce((a, b) => a + b, 0) / 8;
+  const gameFeelAvg = Object.values(gameFeelScores).reduce((a, b) => a + b, 0) / 6;
+
+  const scoreBreakdown: ScoreBreakdown = {
+    baseScore,
+    qualityAdjustment,
+    mdaContribution: Math.round((mdaAvg - baseScore) * 0.6),
+    gameFeelContribution: Math.round((gameFeelAvg - baseScore) * 0.4),
+    tier,
+  };
+
+  return {
+    appId,
+    gameName,
+    dqs,
+    dqsGrade,
+    mdaScores,
+    mdaPrimary,
+    mdaWeaknesses,
+    gameFeelScores,
+    gameFeelOverall,
+    reviewsAnalyzed: reviews.length,
+    keywordMatches: {
+      mda: mdaMatches,
+      gameFeel: gameFeelMatches,
+    },
+    genreBenchmark,
+    recommendations,
+    analyzedAt: new Date().toISOString(),
+    scoreBreakdown,
+    metadata,
+  };
+}
+
+// V2 타입 내보내기
+export type { GameMetaData, SteamRatingTier, ScoreBreakdown };
