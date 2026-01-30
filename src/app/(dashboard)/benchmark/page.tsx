@@ -27,6 +27,8 @@ import {
   Minus,
   BarChart3,
   RefreshCw,
+  HelpCircle,
+  Info,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -246,10 +248,12 @@ export default function BenchmarkPage() {
             </div>
           )}
 
-          {/* 빠른 추가 */}
-          {selectedGames.length === 0 && (
+          {/* 빠른 추가 - 항상 표시 (10개 미만일 때) */}
+          {selectedGames.length < 10 && (
             <div>
-              <p className="text-sm text-muted-foreground mb-2">인기 게임으로 시작</p>
+              <p className="text-sm text-muted-foreground mb-2">
+                {selectedGames.length === 0 ? '인기 게임으로 시작' : '빠른 추가'}
+              </p>
               <div className="flex flex-wrap gap-2">
                 {[
                   { appId: 730, name: 'Counter-Strike 2' },
@@ -257,18 +261,24 @@ export default function BenchmarkPage() {
                   { appId: 1086940, name: "Baldur's Gate 3" },
                   { appId: 1245620, name: 'Elden Ring' },
                   { appId: 1172470, name: 'Apex Legends' },
-                ].map((game) => (
-                  <Button
-                    key={game.appId}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleAddGame(game)}
-                    className="text-xs"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    {game.name}
-                  </Button>
-                ))}
+                  { appId: 252490, name: 'Rust' },
+                  { appId: 1091500, name: 'Cyberpunk 2077' },
+                  { appId: 814380, name: 'Sekiro' },
+                ]
+                  .filter((game) => !selectedGames.some(g => g.appId === game.appId))
+                  .slice(0, 6)
+                  .map((game) => (
+                    <Button
+                      key={game.appId}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleAddGame(game)}
+                      className="text-xs"
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      {game.name}
+                    </Button>
+                  ))}
               </div>
             </div>
           )}
@@ -498,18 +508,97 @@ export default function BenchmarkPage() {
         </div>
       )}
 
-      {/* 안내 */}
+      {/* 안내 및 메트릭 설명 */}
       {!results && !isBenchmarking && (
-        <Card className="border-dashed">
-          <CardContent className="py-12 text-center">
-            <Scale className="h-16 w-16 mx-auto text-emerald-200 mb-4" />
-            <h3 className="text-lg font-medium mb-2">게임을 선택하고 벤치마크를 실행하세요</h3>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              2~10개의 게임을 선택하면 템플릿 기반으로 종합 성과를 비교 분석합니다.
-              매출, CCU, 리뷰, 평점 등 다양한 메트릭을 한눈에 비교할 수 있습니다.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <Card className="border-dashed">
+            <CardContent className="py-12 text-center">
+              <Scale className="h-16 w-16 mx-auto text-emerald-200 mb-4" />
+              <h3 className="text-lg font-medium mb-2">게임을 선택하고 벤치마크를 실행하세요</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                2~10개의 게임을 선택하면 템플릿 기반으로 종합 성과를 비교 분석합니다.
+                매출, CCU, 리뷰, 평점 등 다양한 메트릭을 한눈에 비교할 수 있습니다.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* 메트릭 설명 */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Info className="h-4 w-4 text-emerald-500" />
+                측정 메트릭 안내
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">💰</span>
+                    <span className="font-medium text-sm">추정 매출</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Boxleiter 방식으로 계산한 총 매출 추정치. 리뷰 수 × 평균 가격 × 보정계수로 산출됩니다.
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">👥</span>
+                    <span className="font-medium text-sm">동시접속자 (CCU)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    현재 게임을 플레이 중인 실시간 유저 수. 게임의 현재 인기도와 활성 커뮤니티 규모를 나타냅니다.
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">⭐</span>
+                    <span className="font-medium text-sm">긍정률 (Rating)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    전체 리뷰 중 긍정적 리뷰의 비율. 게임 품질과 유저 만족도의 핵심 지표입니다.
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">📝</span>
+                    <span className="font-medium text-sm">총 리뷰</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Steam에 등록된 총 리뷰 수. 게임의 도달 범위와 판매량을 간접적으로 나타냅니다.
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">⏱️</span>
+                    <span className="font-medium text-sm">평균 플레이타임</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    유저들의 평균 플레이 시간. 게임의 콘텐츠 깊이와 재플레이 가치를 측정합니다.
+                  </p>
+                </div>
+                <div className="p-3 rounded-lg bg-muted/50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">📊</span>
+                    <span className="font-medium text-sm">참여도 (Engagement)</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    CCU 대비 총 판매량 비율. 구매자 중 실제 활성 플레이어 비율로 장기적 흡인력을 측정합니다.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 p-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/30">
+                <div className="flex items-start gap-2">
+                  <HelpCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs text-emerald-700 dark:text-emerald-300">
+                    <strong>등급 기준:</strong> S(90+) → A(80+) → B(70+) → C(60+) → D(50+) → F(50 미만).
+                    각 메트릭은 템플릿에 따라 다른 가중치가 적용되며, 종합 점수로 순위가 결정됩니다.
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
