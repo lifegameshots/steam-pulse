@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { redis } from '@/lib/redis';
 import { CACHE_TTL } from '@/lib/utils/constants';
+import { publicCacheHeaders } from '@/lib/api/response';
+
+// 공개 데이터 - CDN 캐시 30분, stale-while-revalidate 1시간
+const CACHE_MAX_AGE = 1800;
+const CACHE_SWR = 3600;
 
 const STEAM_STORE_API = 'https://store.steampowered.com/api';
 
@@ -20,15 +25,28 @@ interface UpcomingGame {
   };
 }
 
+// API 에러 타입
+interface ApiError extends Error {
+  code: string;
+  status: number;
+}
+
+function createApiError(message: string, code: string, status: number): ApiError {
+  const error = new Error(message) as ApiError;
+  error.code = code;
+  error.status = status;
+  return error;
+}
+
 // Steam Featured에서 Coming Soon 게임 가져오기
-async function getUpcomingGames(): Promise<UpcomingGame[]> {
+async function getUpcomingGames(): Promise<{ games: UpcomingGame[]; fromCache: boolean }> {
   const cacheKey = 'steam:upcoming';
 
   try {
     // Redis 캐시 확인
     const cached = await redis.get<UpcomingGame[]>(cacheKey);
     if (cached !== null) {
-      return cached;
+      return { games: cached, fromCache: true };
     }
 
     // Steam Featured Categories API 호출
@@ -38,7 +56,11 @@ async function getUpcomingGames(): Promise<UpcomingGame[]> {
     );
 
     if (!response.ok) {
-      return [];
+      throw createApiError(
+        `Steam API returned ${response.status}`,
+        'STEAM_API_ERROR',
+        response.status
+      );
     }
 
     const data = await response.json();
@@ -75,10 +97,52 @@ async function getUpcomingGames(): Promise<UpcomingGame[]> {
     // Redis에 캐시 저장 (1시간)
     await redis.setex(cacheKey, CACHE_TTL.STEAMSPY, games);
 
-    return games;
+    return { games, fromCache: false };
   } catch (error) {
+    // Redis 오류 시 캐시 없이 재시도
+    if (error instanceof Error && error.message.includes('Redis')) {
+      console.warn('Redis error, falling back to direct API call');
+      try {
+        const response = await fetch(
+          `${STEAM_STORE_API}/featuredcategories?cc=us&l=english`,
+          { next: { revalidate: 3600 } }
+        );
+        if (response.ok) {
+          const data = await response.json();
+          const comingSoon = data.coming_soon?.items || [];
+          const games: UpcomingGame[] = comingSoon.map((game: {
+            id: number;
+            name: string;
+            header_image: string;
+            final_price: number;
+            discount_percent: number;
+            currency: string;
+            windows_available: boolean;
+            mac_available: boolean;
+            linux_available: boolean;
+          }) => ({
+            id: game.id,
+            name: game.name,
+            header_image: game.header_image,
+            release_date: 'Coming Soon',
+            coming_soon: true,
+            price: game.final_price === 0 ? null : game.final_price,
+            discount_percent: game.discount_percent,
+            currency: game.currency || 'USD',
+            platforms: {
+              windows: game.windows_available ?? true,
+              mac: game.mac_available ?? false,
+              linux: game.linux_available ?? false,
+            },
+          }));
+          return { games, fromCache: false };
+        }
+      } catch {
+        // 폴백도 실패
+      }
+    }
     console.error('Upcoming Games API Error:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -134,6 +198,7 @@ export async function GET(request: Request) {
     if (appId) {
       const followers = await getFollowerCount(parseInt(appId));
       return NextResponse.json({
+        success: true,
         appId: parseInt(appId),
         followers,
         estimatedWishlists: followers ? followers * 10 : null, // PRD: 위시리스트 ≈ 팔로워 × 10
@@ -142,7 +207,7 @@ export async function GET(request: Request) {
     }
 
     // 출시 예정작 목록 조회
-    const games = await getUpcomingGames();
+    const { games, fromCache } = await getUpcomingGames();
 
     // 각 게임의 팔로워 수 조회 (병렬)
     const gamesWithHype = await Promise.all(
@@ -160,15 +225,28 @@ export async function GET(request: Request) {
     // Hype Score 기준 정렬
     gamesWithHype.sort((a, b) => b.hypeScore - a.hypeScore);
 
-    return NextResponse.json({
-      games: gamesWithHype,
-      timestamp: new Date().toISOString(),
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        games: gamesWithHype,
+        totalGames: gamesWithHype.length,
+        fromCache,
+        timestamp: new Date().toISOString(),
+      },
+      {
+        headers: publicCacheHeaders(CACHE_MAX_AGE, CACHE_SWR),
+      }
+    );
   } catch (error) {
     console.error('Upcoming API Error:', error);
+    const apiError = error as ApiError;
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        success: false,
+        error: apiError.message || 'Internal server error',
+        code: apiError.code || 'INTERNAL_ERROR',
+      },
+      { status: apiError.status || 500 }
     );
   }
 }

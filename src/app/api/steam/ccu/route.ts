@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import { getTopGames, getPlayerCount } from '@/lib/api/steam';
 import { redis, cacheKeys } from '@/lib/redis';
 import { CACHE_TTL } from '@/lib/utils/constants';
+import { publicCacheHeaders } from '@/lib/api/response';
+
+// 공개 데이터 - CDN 캐시 1분, stale-while-revalidate 5분
+const CACHE_MAX_AGE = 60;
+const CACHE_SWR = 300;
 
 // 배치 CCU 조회 (N+1 쿼리 방지)
 async function getBatchPlayerCounts(appIds: number[]): Promise<Record<number, number>> {
@@ -128,14 +133,19 @@ export async function GET(request: Request) {
     // Redis에 캐시 저장 (5분)
     await redis.setex(cacheKey, CACHE_TTL.TOP_GAMES, topGames);
 
-    return NextResponse.json({
-      games: topGames,
-      timestamp: new Date().toISOString(),
-    });
+    return NextResponse.json(
+      {
+        games: topGames,
+        timestamp: new Date().toISOString(),
+      },
+      {
+        headers: publicCacheHeaders(CACHE_MAX_AGE, CACHE_SWR),
+      }
+    );
   } catch (error) {
     console.error('CCU API Error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { success: false, error: 'Internal server error', code: 'INTERNAL_ERROR' },
       { status: 500 }
     );
   }

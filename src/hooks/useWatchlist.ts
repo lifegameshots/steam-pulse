@@ -20,17 +20,26 @@ interface WatchlistItem {
   };
 }
 
+// 인증 에러 타입
+class AuthRequiredError extends Error {
+  constructor(message = '로그인이 필요합니다') {
+    super(message);
+    this.name = 'AuthRequiredError';
+  }
+}
+
 // 워치리스트 조회
 async function fetchWatchlist(): Promise<WatchlistItem[]> {
   const response = await fetch('/api/watchlist');
-  
+
   if (!response.ok) {
     if (response.status === 401) {
-      return []; // 로그인 안 된 경우 빈 배열
+      // 인증 에러를 명시적으로 던져서 UI에서 처리할 수 있게 함
+      throw new AuthRequiredError();
     }
     throw new Error('워치리스트 조회 실패');
   }
-  
+
   const data = await response.json();
   return data.watchlist;
 }
@@ -160,11 +169,16 @@ export function useWatchlist() {
   const isInWatchlist = (appId: number): boolean => {
     return watchlist.some(item => item.app_id === appId);
   };
-  
+
+  // 인증 에러 여부 확인
+  const isAuthError = error instanceof AuthRequiredError ||
+    (error instanceof Error && error.message.includes('인증'));
+
   return {
     watchlist,
     isLoading,
     error,
+    isAuthError, // 인증 에러 여부를 명시적으로 제공
     refetch,
     addToWatchlist: addMutation.mutate,
     removeFromWatchlist: removeMutation.mutate,
@@ -173,3 +187,6 @@ export function useWatchlist() {
     isInWatchlist,
   };
 }
+
+// AuthRequiredError를 외부에서 사용할 수 있도록 export
+export { AuthRequiredError };

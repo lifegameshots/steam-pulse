@@ -30,32 +30,230 @@ const noopRedis = {
 // 실제 내보내기 (Redis 또는 no-op)
 export const redis = realRedis ?? (noopRedis as unknown as Redis);
 
+// ============================================================================
+// Redis Observability
+// ============================================================================
+
+interface RedisMetrics {
+  operation: string;
+  key: string;
+  duration: number;
+  hit: boolean;
+  timeout: boolean;
+  error?: string;
+}
+
+function logRedisMetrics(metrics: RedisMetrics): void {
+  const { operation, key, duration, hit, timeout, error } = metrics;
+
+  const logData = {
+    ts: new Date().toISOString(),
+    op: operation,
+    key: key.substring(0, 50), // 키 길이 제한
+    ms: duration,
+    hit,
+    timeout,
+    error,
+  };
+
+  // 타임아웃 또는 에러 시 경고
+  if (timeout) {
+    console.warn('[REDIS TIMEOUT]', JSON.stringify(logData));
+  } else if (error) {
+    console.error('[REDIS ERROR]', JSON.stringify(logData));
+  } else if (duration > 1000) {
+    // 1초 이상 소요 시 경고
+    console.warn('[REDIS SLOW]', JSON.stringify(logData));
+  }
+  // 개발 환경에서만 모든 로그 출력
+  else if (process.env.NODE_ENV === 'development' && process.env.DEBUG_REDIS) {
+    console.log('[REDIS]', JSON.stringify(logData));
+  }
+}
+
+/**
+ * 타임아웃을 적용한 프로미스 래퍼
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  fallback: T,
+  key: string = 'unknown'
+): Promise<{ result: T; timedOut: boolean }> {
+  let timeoutId: NodeJS.Timeout;
+  let timedOut = false;
+  const startTime = Date.now();
+
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timeoutId = setTimeout(() => {
+      timedOut = true;
+      logRedisMetrics({
+        operation: 'get',
+        key,
+        duration: Date.now() - startTime,
+        hit: false,
+        timeout: true,
+      });
+      resolve(fallback);
+    }, timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    clearTimeout(timeoutId!);
+    return { result, timedOut };
+  } catch (error) {
+    clearTimeout(timeoutId!);
+    throw error;
+  }
+}
+
 /**
  * 캐시에서 데이터 가져오기 (없으면 fetcher 실행 후 저장)
+ * Redis 타임아웃/실패 시 자동으로 fetcher 실행 (Graceful Degradation)
  */
 export async function getOrSet<T>(
   key: string,
   fetcher: () => Promise<T>,
-  ttl: number = CACHE_TTL.GAME_DETAILS
+  ttl: number = CACHE_TTL.GAME_DETAILS,
+  options: { timeout?: number } = {}
 ): Promise<T> {
+  const { timeout = 3000 } = options; // 기본 3초 타임아웃
+  const startTime = Date.now();
+
   try {
-    // 캐시 확인
-    const cached = await redis.get<T>(key);
+    // 캐시 확인 (타임아웃 적용)
+    const { result: cached, timedOut } = await withTimeout(
+      redis.get<T>(key),
+      timeout,
+      null,
+      key
+    );
+
+    if (timedOut) {
+      // 타임아웃 발생 - fetcher 실행
+      const data = await fetcher();
+      return data;
+    }
+
     if (cached !== null) {
+      logRedisMetrics({
+        operation: 'get',
+        key,
+        duration: Date.now() - startTime,
+        hit: true,
+        timeout: false,
+      });
       return cached;
     }
+
+    logRedisMetrics({
+      operation: 'get',
+      key,
+      duration: Date.now() - startTime,
+      hit: false,
+      timeout: false,
+    });
 
     // 캐시 미스 - 데이터 가져오기
     const data = await fetcher();
 
-    // 캐시에 저장
-    await redis.setex(key, ttl, data);
+    // 캐시에 저장 (비동기, 실패해도 무시)
+    redis.setex(key, ttl, data).catch((err) => {
+      logRedisMetrics({
+        operation: 'setex',
+        key,
+        duration: 0,
+        hit: false,
+        timeout: false,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
+    });
 
     return data;
   } catch (error) {
-    console.error('Redis cache error:', error);
+    logRedisMetrics({
+      operation: 'get',
+      key,
+      duration: Date.now() - startTime,
+      hit: false,
+      timeout: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
     // 캐시 실패 시 직접 데이터 가져오기
     return fetcher();
+  }
+}
+
+/**
+ * 캐시에서 데이터 가져오기 + 캐시 상태 반환
+ */
+export async function getOrSetWithMeta<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  ttl: number = CACHE_TTL.GAME_DETAILS,
+  options: { timeout?: number } = {}
+): Promise<{ data: T; fromCache: boolean; redisTimeout: boolean }> {
+  const { timeout = 3000 } = options;
+  const startTime = Date.now();
+
+  try {
+    const { result: cached, timedOut } = await withTimeout(
+      redis.get<T>(key),
+      timeout,
+      null,
+      key
+    );
+
+    if (timedOut) {
+      const data = await fetcher();
+      return { data, fromCache: false, redisTimeout: true };
+    }
+
+    if (cached !== null) {
+      logRedisMetrics({
+        operation: 'get',
+        key,
+        duration: Date.now() - startTime,
+        hit: true,
+        timeout: false,
+      });
+      return { data: cached, fromCache: true, redisTimeout: false };
+    }
+
+    logRedisMetrics({
+      operation: 'get',
+      key,
+      duration: Date.now() - startTime,
+      hit: false,
+      timeout: false,
+    });
+
+    const data = await fetcher();
+
+    redis.setex(key, ttl, data).catch((err) => {
+      logRedisMetrics({
+        operation: 'setex',
+        key,
+        duration: 0,
+        hit: false,
+        timeout: false,
+        error: err instanceof Error ? err.message : 'Unknown error',
+      });
+    });
+
+    return { data, fromCache: false, redisTimeout: false };
+  } catch (error) {
+    logRedisMetrics({
+      operation: 'get',
+      key,
+      duration: Date.now() - startTime,
+      hit: false,
+      timeout: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    const data = await fetcher();
+    return { data, fromCache: false, redisTimeout: false };
   }
 }
 

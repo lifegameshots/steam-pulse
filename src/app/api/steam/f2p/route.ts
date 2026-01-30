@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { redis } from '@/lib/redis';
+import { publicCacheHeaders } from '@/lib/api/response';
 
 const STEAM_STORE_API = 'https://store.steampowered.com/api';
 const STEAMSPY_API = 'https://steamspy.com/api.php';
+
+// 공개 데이터 - CDN 캐시 30분, stale-while-revalidate 1시간
+const CACHE_MAX_AGE = 1800;
+const CACHE_SWR = 3600;
 
 interface F2PGame {
   appId: number;
@@ -25,15 +30,28 @@ interface DLCItem {
   type: 'dlc' | 'soundtrack' | 'bundle' | 'subscription' | 'cosmetic' | 'other';
 }
 
+// API 에러 타입
+interface ApiError extends Error {
+  code: string;
+  status: number;
+}
+
+function createApiError(message: string, code: string, status: number): ApiError {
+  const error = new Error(message) as ApiError;
+  error.code = code;
+  error.status = status;
+  return error;
+}
+
 // SteamSpy에서 F2P 게임 목록 가져오기
-async function getF2PGamesFromSteamSpy(): Promise<F2PGame[]> {
+async function getF2PGamesFromSteamSpy(): Promise<{ games: F2PGame[]; fromCache: boolean }> {
   const cacheKey = 'steam:f2p:list';
 
   try {
     // Redis 캐시 확인
     const cached = await redis.get<F2PGame[]>(cacheKey);
     if (cached !== null) {
-      return cached;
+      return { games: cached, fromCache: true };
     }
 
     // SteamSpy genre=Free to Play API
@@ -42,7 +60,11 @@ async function getF2PGamesFromSteamSpy(): Promise<F2PGame[]> {
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch from SteamSpy');
+      throw createApiError(
+        `SteamSpy API returned ${response.status}`,
+        'STEAMSPY_API_ERROR',
+        response.status
+      );
     }
 
     const data = await response.json();
@@ -78,10 +100,51 @@ async function getF2PGamesFromSteamSpy(): Promise<F2PGame[]> {
     // Redis에 캐시 저장 (1시간)
     await redis.setex(cacheKey, 3600, games);
 
-    return games;
+    return { games, fromCache: false };
   } catch (error) {
+    // Redis 오류 시 캐시 없이 재시도
+    if (error instanceof Error && error.message.includes('Redis')) {
+      console.warn('Redis error in F2P, falling back to direct API call');
+      try {
+        const response = await fetch(`${STEAMSPY_API}?request=genre&genre=Free+to+Play`, {
+          next: { revalidate: 3600 }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const games: F2PGame[] = Object.entries(data)
+            .map(([appId, gameData]: [string, unknown]) => {
+              const game = gameData as {
+                name: string;
+                ccu: number;
+                owners: string;
+                positive: number;
+                negative: number;
+                tags?: Record<string, number>;
+              };
+              return {
+                appId: parseInt(appId),
+                name: game.name,
+                headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`,
+                genres: ['Free to Play'],
+                tags: game.tags ? Object.keys(game.tags).slice(0, 10) : [],
+                ccu: game.ccu || 0,
+                owners: game.owners || '0',
+                positive: game.positive || 0,
+                negative: game.negative || 0,
+                releaseDate: '',
+              };
+            })
+            .filter(game => game.ccu > 0 || (game.positive + game.negative) > 100)
+            .sort((a, b) => b.ccu - a.ccu)
+            .slice(0, 100);
+          return { games, fromCache: false };
+        }
+      } catch {
+        // 폴백도 실패
+      }
+    }
     console.error('F2P Games API Error:', error);
-    return [];
+    throw error;
   }
 }
 
@@ -189,6 +252,7 @@ export async function GET(request: Request) {
     if (appId) {
       const dlcs = await getGameDLCs(parseInt(appId));
       return NextResponse.json({
+        success: true,
         appId: parseInt(appId),
         dlcs,
         totalDLCs: dlcs.length,
@@ -197,7 +261,8 @@ export async function GET(request: Request) {
     }
 
     // F2P 게임 목록 조회
-    let games = await getF2PGamesFromSteamSpy();
+    const { games: allGames, fromCache } = await getF2PGamesFromSteamSpy();
+    let games = allGames;
 
     // 장르 필터
     if (genre) {
@@ -225,19 +290,31 @@ export async function GET(request: Request) {
     const popularTags = Object.entries(tagCounts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 20)
-      .map(([tag, count]) => ({ tag, count }));
+      .map(([tagName, count]) => ({ tag: tagName, count }));
 
-    return NextResponse.json({
-      games,
-      totalGames: games.length,
-      popularTags,
-      timestamp: new Date().toISOString(),
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        games,
+        totalGames: games.length,
+        popularTags,
+        fromCache,
+        timestamp: new Date().toISOString(),
+      },
+      {
+        headers: publicCacheHeaders(CACHE_MAX_AGE, CACHE_SWR),
+      }
+    );
   } catch (error) {
     console.error('F2P API Error:', error);
+    const apiError = error as ApiError;
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        success: false,
+        error: apiError.message || 'Internal server error',
+        code: apiError.code || 'INTERNAL_ERROR',
+      },
+      { status: apiError.status || 500 }
     );
   }
 }

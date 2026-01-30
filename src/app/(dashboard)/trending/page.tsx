@@ -11,6 +11,7 @@ import { calculateTrendingScore } from '@/lib/algorithms/trending';
 import { formatNumber } from '@/lib/utils/formatters';
 import { InsightCard } from '@/components/cards/InsightCard';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { EmptyState, ErrorState } from '@/components/ui/data-states';
 import Link from 'next/link';
 
 type Period = '24h' | '7d' | '30d';
@@ -28,7 +29,7 @@ interface TrendingGame {
 
 export default function TrendingPage() {
   const [period, setPeriod] = useState<Period>('24h');
-  const { data: topGames, isLoading } = useTopGames();
+  const { data: topGames, isLoading, error, refetch } = useTopGames();
 
   // 트렌딩 점수 계산 및 정렬
   const trendingGames = useMemo((): TrendingGame[] => {
@@ -150,6 +151,21 @@ export default function TrendingPage() {
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
+          ) : error ? (
+            <ErrorState
+              type="server"
+              title="트렌딩 데이터를 불러올 수 없습니다"
+              message={error.message}
+              onRetry={() => refetch()}
+              compact
+            />
+          ) : filteredGames.length === 0 ? (
+            <EmptyState
+              type="collecting"
+              title="데이터 수집 중"
+              description="트렌딩 데이터를 수집하고 있습니다. 잠시 후 다시 확인해 주세요."
+              compact
+            />
           ) : (
             <div className="space-y-2">
               {filteredGames.slice(0, 20).map((game, index) => (

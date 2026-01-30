@@ -1,29 +1,36 @@
 import { NextResponse } from 'next/server';
 import { getFeaturedCategories } from '@/lib/api/steam';
+import {
+  successResponse,
+  serverError,
+  externalApiError,
+  publicCacheHeaders,
+} from '@/lib/api/response';
+
+// 공개 데이터 - CDN 캐시 10분, stale-while-revalidate 30분
+const CACHE_MAX_AGE = 600;
+const CACHE_SWR = 1800;
 
 export async function GET() {
   try {
     const featured = await getFeaturedCategories();
-    
+
     if (!featured) {
-      return NextResponse.json(
-        { error: 'Failed to fetch featured games' },
-        { status: 500 }
-      );
+      return externalApiError('Steam');
     }
 
-    return NextResponse.json({
+    const data = {
       specials: featured.specials?.items?.slice(0, 10) || [],
       topSellers: featured.top_sellers?.items?.slice(0, 10) || [],
       newReleases: featured.new_releases?.items?.slice(0, 10) || [],
       featured: featured.large_capsules?.slice(0, 5) || [],
-      timestamp: new Date().toISOString(),
+    };
+
+    return successResponse(data, {
+      headers: publicCacheHeaders(CACHE_MAX_AGE, CACHE_SWR),
     });
   } catch (error) {
     console.error('Featured API Error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return serverError('피처드 게임 조회 실패', error);
   }
 }

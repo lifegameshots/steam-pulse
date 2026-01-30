@@ -1,26 +1,79 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, Trash2, ExternalLink, Bell, BellOff, BarChart3 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Star, Trash2, ExternalLink, Bell, BellOff, LogIn } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWatchlist } from '@/hooks/useWatchlist';
-import { formatNumber, formatDate } from '@/lib/utils/formatters';
+import { formatDate } from '@/lib/utils/formatters';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { BasketAnalysisPanel } from '@/components/watchlist/BasketAnalysisPanel';
+import { EmptyState, ErrorState } from '@/components/ui/data-states';
 
 export default function WatchlistPage() {
-  const { 
-    watchlist, 
-    isLoading, 
-    removeFromWatchlist, 
-    isRemoving 
+  const {
+    watchlist,
+    isLoading,
+    error,
+    isAuthError,
+    refetch,
+    removeFromWatchlist,
+    isRemoving
   } = useWatchlist();
 
+  // 인증 에러 상태
+  if (isAuthError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="관심 목록"
+          description="관심 게임을 추가하고 추적하세요"
+          icon={<Star className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 fill-yellow-500" />}
+          pageName="관심 목록"
+        />
+        <Card className="border-amber-500/30 bg-amber-500/5">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <LogIn className="h-12 w-12 text-amber-500/60 mb-4" />
+            <h3 className="text-lg font-medium mb-2">로그인이 필요합니다</h3>
+            <p className="text-sm text-muted-foreground text-center max-w-sm mb-4">
+              관심 목록 기능을 사용하려면 로그인이 필요합니다.
+            </p>
+            <Link href="/login">
+              <Button>
+                <LogIn className="mr-2 h-4 w-4" />
+                로그인
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // 일반 에러 상태
+  if (error && !isAuthError) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="관심 목록"
+          description="관심 게임을 추가하고 추적하세요"
+          icon={<Star className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 fill-yellow-500" />}
+          pageName="관심 목록"
+        />
+        <ErrorState
+          type="unknown"
+          title="워치리스트를 불러올 수 없습니다"
+          message={error.message}
+          onRetry={() => refetch()}
+        />
+      </div>
+    );
+  }
+
+  // 로딩 상태
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -33,7 +86,7 @@ export default function WatchlistPage() {
             관심 게임을 추적하고 알림을 받으세요
           </p>
         </div>
-        
+
         <div className="grid gap-4">
           {Array(5).fill(0).map((_, i) => (
             <Card key={i}>
@@ -69,21 +122,17 @@ export default function WatchlistPage() {
         />
       </div>
 
-      {/* 빈 상태 */}
+      {/* 빈 상태 - watchlist.length === 0은 정상 상태 (로딩이 아님) */}
       {watchlist.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-16">
-            <Star className="h-16 w-16 text-muted-foreground/30 mb-4" />
-            <h3 className="text-lg font-medium mb-2">워치리스트가 비어있습니다</h3>
-            <p className="text-muted-foreground text-center mb-4">
-              게임 상세 페이지에서 ⭐ 버튼을 눌러<br />
-              관심 게임을 추가해보세요
-            </p>
-            <Link href="/">
-              <Button>게임 둘러보기</Button>
-            </Link>
-          </CardContent>
-        </Card>
+        <EmptyState
+          type="no-data"
+          title="워치리스트가 비어있습니다"
+          description="게임 상세 페이지에서 별 버튼을 눌러 관심 게임을 추가해보세요"
+          action={{
+            label: '게임 둘러보기',
+            onClick: () => window.location.href = '/',
+          }}
+        />
       )}
 
       {/* 워치리스트 목록 */}

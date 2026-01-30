@@ -198,6 +198,11 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('Mark all read error:', error);
+        return NextResponse.json({
+          success: false,
+          error: '모든 알림 읽음 처리 중 오류가 발생했습니다',
+          code: 'MARK_ALL_READ_ERROR',
+        }, { status: 500 });
       }
     } else if (messageIds) {
       // 특정 알림 읽음 처리
@@ -209,11 +214,26 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error('Mark read error:', error);
+        return NextResponse.json({
+          success: false,
+          error: '알림 읽음 처리 중 오류가 발생했습니다',
+          code: 'MARK_READ_ERROR',
+        }, { status: 500 });
       }
     }
 
-    // 캐시 무효화
-    // Redis 패턴 삭제는 복잡하므로 캐시 만료에 의존
+    // 캐시 무효화 - 사용자별 캐시 패턴 삭제 시도
+    try {
+      // Redis 패턴 삭제는 복잡하므로 여러 일반적인 캐시 키를 삭제
+      const cacheKeys = [
+        `alert_messages:${user.id}:1:20:false:all`,
+        `alert_messages:${user.id}:1:20:true:all`,
+      ];
+      await Promise.all(cacheKeys.map(key => redis.del(key)));
+    } catch (cacheError) {
+      // 캐시 무효화 실패는 치명적이지 않으므로 로그만 남김
+      console.warn('Cache invalidation failed:', cacheError);
+    }
 
     return NextResponse.json({
       success: true,
