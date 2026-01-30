@@ -25,6 +25,9 @@ import {
   FileText,
   FlaskConical,
   Radio,
+  Microscope,
+  Youtube,
+  Scale,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -93,6 +96,27 @@ const navGroups: NavGroup[] = [
   {
     title: '게임 분석',
     items: [
+      {
+        href: '/game-lab',
+        label: '게임 분석 도구',
+        labelKr: '게임 분석 도구',
+        icon: Microscope,
+        tooltip: 'MDA 디자인, 핵심 재미, 유저 페르소나 심층 분석',
+      },
+      {
+        href: '/youtube-lab',
+        label: 'YouTube 리뷰 분석',
+        labelKr: 'YouTube 리뷰 분석',
+        icon: Youtube,
+        tooltip: '유튜버 리뷰 영상 감정 분석 및 인플루언서 영향력 측정',
+      },
+      {
+        href: '/benchmark',
+        label: '멀티 게임 벤치마크',
+        labelKr: '멀티 게임 벤치마크',
+        icon: Scale,
+        tooltip: '여러 게임을 동시에 비교하여 시장 포지션 분석',
+      },
       {
         href: '/f2p',
         label: 'Free To Play',
@@ -213,6 +237,27 @@ const navItems: NavItem[] = [
     labelKr: '고급 분석',
     icon: BarChart3,
     tooltip: '리텐션, 변동성, 포지셔닝 등 심층 분석',
+  },
+  {
+    href: '/game-lab',
+    label: '게임 분석 도구',
+    labelKr: '게임 분석 도구',
+    icon: Microscope,
+    tooltip: 'MDA 디자인, 핵심 재미, 유저 페르소나 심층 분석',
+  },
+  {
+    href: '/youtube-lab',
+    label: 'YouTube 리뷰 분석',
+    labelKr: 'YouTube 리뷰 분석',
+    icon: Youtube,
+    tooltip: '유튜버 리뷰 영상 감정 분석 및 인플루언서 영향력 측정',
+  },
+  {
+    href: '/benchmark',
+    label: '멀티 게임 벤치마크',
+    labelKr: '멀티 게임 벤치마크',
+    icon: Scale,
+    tooltip: '여러 게임을 동시에 비교하여 시장 포지션 분석',
   },
   {
     href: '/f2p',
