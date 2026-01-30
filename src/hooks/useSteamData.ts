@@ -153,7 +153,15 @@ export function useFeatured() {
     queryFn: async () => {
       const res = await fetch('/api/steam/featured');
       if (!res.ok) throw new Error('Failed to fetch featured');
-      return res.json();
+      const json = await res.json();
+      // API 응답이 { success, data, timestamp } 형태일 경우 data 추출
+      if (json.success && json.data) {
+        return {
+          ...json.data,
+          timestamp: json.timestamp,
+        };
+      }
+      return json;
     },
     staleTime: 1000 * 60 * 10, // 10분 (피처드 데이터는 자주 변경 안 됨)
   });
