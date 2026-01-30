@@ -96,6 +96,7 @@ export interface IGDBGame {
   websites?: IGDBWebsite[];
   involved_companies?: IGDBInvolvedCompany[];
   game_modes?: IGDBGameMode[];
+  player_perspectives?: IGDBPlayerPerspective[];
   themes?: IGDBTheme[];
   keywords?: IGDBKeyword[];
   similar_games?: number[];
@@ -171,6 +172,12 @@ export interface IGDBTheme {
   slug?: string;
 }
 
+export interface IGDBPlayerPerspective {
+  id: number;
+  name: string;
+  slug?: string;
+}
+
 export interface IGDBKeyword {
   id: number;
   name: string;
@@ -230,7 +237,7 @@ export async function getGameById(id: number): Promise<IGDBGame | null> {
             rating, rating_count, aggregated_rating, aggregated_rating_count,
             total_rating, total_rating_count, first_release_date,
             genres.*, platforms.*, cover.*, screenshots.*, artworks.*,
-            videos.*, websites.*, game_modes.*, themes.*, keywords.*,
+            videos.*, websites.*, game_modes.*, player_perspectives.*, themes.*, keywords.*,
             involved_companies.company.name, involved_companies.developer, involved_companies.publisher,
             similar_games, franchise.name, collection.name, external_games.*,
             status, category, hypes, follows;

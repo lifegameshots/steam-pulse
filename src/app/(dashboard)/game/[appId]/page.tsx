@@ -22,8 +22,10 @@ import { DesignAnalysisPanel } from '@/components/design/DesignAnalysisPanel';
 import { PlayerDNAPanel } from '@/components/persona/PlayerDNAPanel';
 import { ReviewMatrixPanel } from '@/components/youtube/ReviewMatrixPanel';
 import { GameStreamingPanel } from '@/components/streaming/GameStreamingPanel';
+import { IGDBEnrichmentPanel } from '@/components/igdb/IGDBEnrichmentPanel';
+import { SimilarGamesPanel } from '@/components/igdb/SimilarGamesPanel';
 import Link from 'next/link';
-import { Radio } from 'lucide-react';
+import { Radio, Sparkles } from 'lucide-react';
 
 // 뉴스 아이템 타입
 interface NewsItem {
@@ -463,10 +465,14 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
 
       {/* ========== 탭 영역 ========== */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-6 bg-slate-800/50">
+        <TabsList className="grid w-full grid-cols-7 bg-slate-800/50">
           <TabsTrigger value="overview" className="text-xs sm:text-sm">
             <TrendingUp className="w-4 h-4 mr-1 hidden sm:inline" />
             개요
+          </TabsTrigger>
+          <TabsTrigger value="igdb" className="text-xs sm:text-sm">
+            <Globe className="w-4 h-4 mr-1 hidden sm:inline" />
+            IGDB
           </TabsTrigger>
           <TabsTrigger value="corefun" className="text-xs sm:text-sm">
             <Gamepad2 className="w-4 h-4 mr-1 hidden sm:inline" />
@@ -712,6 +718,18 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
           </Card>
         )}
       </div>
+        </TabsContent>
+
+        {/* IGDB 추가 정보 탭 */}
+        <TabsContent value="igdb" className="space-y-4 sm:space-y-6 mt-4">
+          <IGDBEnrichmentPanel
+            appId={appId}
+            gameName={game.name}
+          />
+          <SimilarGamesPanel
+            appId={appId}
+            gameName={game.name}
+          />
         </TabsContent>
 
         {/* 핵심 재미 분석 탭 */}

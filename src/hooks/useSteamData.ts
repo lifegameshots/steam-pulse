@@ -286,3 +286,37 @@ export function useGlobalCCU() {
     staleTime: 1000 * 60, // 1분 (실시간 CCU 데이터)
   });
 }
+
+// ========== IGDB 데이터 훅 ==========
+
+// IGDBGame 타입은 @/lib/igdb에서 re-export
+import type { IGDBGame } from '@/lib/igdb';
+export type { IGDBGame as IGDBGameData };
+
+// IGDB API 응답 타입
+interface IGDBResponse {
+  found: boolean;
+  game?: IGDBGame;
+  similarGames?: IGDBGame[];
+  message?: string;
+  steamAppId?: string;
+  timestamp: string;
+}
+
+// IGDB 이미지 URL 생성 (라이브러리 함수 re-export)
+export { getImageUrl as getIGDBImageUrl } from '@/lib/igdb';
+
+// Steam App ID로 IGDB 게임 데이터 조회
+export function useIGDBGame(steamAppId: string | number) {
+  return useQuery<IGDBResponse>({
+    queryKey: ['igdb', steamAppId],
+    queryFn: async () => {
+      const res = await fetch(`/api/igdb?steamId=${steamAppId}&action=details`);
+      if (!res.ok) throw new Error('Failed to fetch IGDB data');
+      return res.json();
+    },
+    enabled: !!steamAppId,
+    staleTime: 1000 * 60 * 60, // 1시간 (IGDB 데이터는 거의 변경 안 됨)
+    retry: 1, // IGDB에 없는 게임도 있으므로 재시도 1회만
+  });
+}
