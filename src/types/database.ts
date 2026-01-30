@@ -311,6 +311,333 @@ export interface Database {
           updated_at?: string;
         };
       };
+
+      calendar_events: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          type: string;
+          importance: string;
+          status: string;
+          start_date: string;
+          end_date: string | null;
+          is_all_day: boolean;
+          app_id: string | null;
+          game_name: string | null;
+          source: string;
+          source_url: string | null;
+          tags: string[] | null;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          title: string;
+          description?: string | null;
+          type: string;
+          importance?: string;
+          status?: string;
+          start_date: string;
+          end_date?: string | null;
+          is_all_day?: boolean;
+          app_id?: string | null;
+          game_name?: string | null;
+          source?: string;
+          source_url?: string | null;
+          tags?: string[] | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          type?: string;
+          importance?: string;
+          status?: string;
+          start_date?: string;
+          end_date?: string | null;
+          is_all_day?: boolean;
+          app_id?: string | null;
+          game_name?: string | null;
+          source?: string;
+          source_url?: string | null;
+          tags?: string[] | null;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+
+      projects: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          type: string;
+          status: string;
+          visibility: string;
+          owner_id: string;
+          owner_email: string | null;
+          games: unknown;
+          members: unknown;
+          notes: unknown;
+          settings: unknown;
+          tags: string[] | null;
+          color: string | null;
+          created_at: string;
+          updated_at: string;
+          archived_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          type?: string;
+          status?: string;
+          visibility?: string;
+          owner_id: string;
+          owner_email?: string | null;
+          games?: unknown;
+          members?: unknown;
+          notes?: unknown;
+          settings?: unknown;
+          tags?: string[] | null;
+          color?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          archived_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          type?: string;
+          status?: string;
+          visibility?: string;
+          owner_id?: string;
+          owner_email?: string | null;
+          games?: unknown;
+          members?: unknown;
+          notes?: unknown;
+          settings?: unknown;
+          tags?: string[] | null;
+          color?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          archived_at?: string | null;
+        };
+      };
+
+      alert_rules: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          type: string;
+          enabled: boolean;
+          target_type: string;
+          target_ids: string[] | null;
+          conditions: unknown;
+          condition_logic: string;
+          channels: string[] | null;
+          priority: string;
+          cooldown_minutes: number;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+          last_triggered_at: string | null;
+          trigger_count: number;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          type: string;
+          enabled?: boolean;
+          target_type?: string;
+          target_ids?: string[] | null;
+          conditions: unknown;
+          condition_logic?: string;
+          channels?: string[] | null;
+          priority?: string;
+          cooldown_minutes?: number;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+          last_triggered_at?: string | null;
+          trigger_count?: number;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          type?: string;
+          enabled?: boolean;
+          target_type?: string;
+          target_ids?: string[] | null;
+          conditions?: unknown;
+          condition_logic?: string;
+          channels?: string[] | null;
+          priority?: string;
+          cooldown_minutes?: number;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+          last_triggered_at?: string | null;
+          trigger_count?: number;
+        };
+      };
+
+      alert_messages: {
+        Row: {
+          id: string;
+          user_id: string;
+          rule_id: string | null;
+          title: string;
+          body: string | null;
+          priority: string;
+          status: string;
+          channels: string[] | null;
+          metadata: unknown | null;
+          created_at: string;
+          read_at: string | null;
+          delivered_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          rule_id?: string | null;
+          title: string;
+          body?: string | null;
+          priority?: string;
+          status?: string;
+          channels?: string[] | null;
+          metadata?: unknown | null;
+          created_at?: string;
+          read_at?: string | null;
+          delivered_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          rule_id?: string | null;
+          title?: string;
+          body?: string | null;
+          priority?: string;
+          status?: string;
+          channels?: string[] | null;
+          metadata?: unknown | null;
+          created_at?: string;
+          read_at?: string | null;
+          delivered_at?: string | null;
+        };
+      };
+
+      alert_settings: {
+        Row: {
+          user_id: string;
+          channels: unknown;
+          priority_filter: string[] | null;
+          quiet_hours: unknown | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          channels?: unknown;
+          priority_filter?: string[] | null;
+          quiet_hours?: unknown | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          channels?: unknown;
+          priority_filter?: string[] | null;
+          quiet_hours?: unknown | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+
+      reports: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          type: string;
+          status: string;
+          sections: unknown;
+          created_by: string;
+          created_by_name: string | null;
+          created_at: string;
+          updated_at: string;
+          published_at: string | null;
+          target_app_ids: string[] | null;
+          target_project_id: string | null;
+          is_public: boolean;
+          share_link: string | null;
+          share_password: string | null;
+          share_expiry: string | null;
+          shares: unknown;
+          theme: unknown | null;
+          cover_image: string | null;
+          logo: string | null;
+          tags: string[] | null;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          type?: string;
+          status?: string;
+          sections?: unknown;
+          created_by: string;
+          created_by_name?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          published_at?: string | null;
+          target_app_ids?: string[] | null;
+          target_project_id?: string | null;
+          is_public?: boolean;
+          share_link?: string | null;
+          share_password?: string | null;
+          share_expiry?: string | null;
+          shares?: unknown;
+          theme?: unknown | null;
+          cover_image?: string | null;
+          logo?: string | null;
+          tags?: string[] | null;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          type?: string;
+          status?: string;
+          sections?: unknown;
+          created_by?: string;
+          created_by_name?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          published_at?: string | null;
+          target_app_ids?: string[] | null;
+          target_project_id?: string | null;
+          is_public?: boolean;
+          share_link?: string | null;
+          share_password?: string | null;
+          share_expiry?: string | null;
+          shares?: unknown;
+          theme?: unknown | null;
+          cover_image?: string | null;
+          logo?: string | null;
+          tags?: string[] | null;
+        };
+      };
     };
     
     Functions: {
@@ -327,6 +654,10 @@ export interface Database {
           p_daily_limit?: number;
         };
         Returns: number;
+      };
+      refresh_game_daily_stats: {
+        Args: Record<string, never>;
+        Returns: void;
       };
     };
   };

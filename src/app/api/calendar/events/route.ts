@@ -3,6 +3,7 @@
 // POST /api/calendar/events - 이벤트 생성
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { redis } from '@/lib/redis';
 import type {
   CalendarEvent,
@@ -20,6 +21,7 @@ const CACHE_TTL = 1800; // 30분
  */
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
     const { searchParams } = new URL(request.url);
 
     // 필터 파라미터 파싱
@@ -79,6 +81,10 @@ export async function GET(request: NextRequest) {
       events.push(...gameEvents);
     }
 
+    // 4. 데이터베이스에서 사용자 정의 이벤트 가져오기
+    const userEvents = await fetchUserEventsFromDB(supabase, filter);
+    events.push(...userEvents);
+
     // 필터 적용
     const filteredEvents = filterEvents(events, filter);
 
@@ -120,6 +126,11 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+
+    // 현재 사용자 확인 (선택적 - 비로그인도 허용할 수 있음)
+    const { data: { user } } = await supabase.auth.getUser();
+
     const body = await request.json();
     const {
       title,
@@ -142,31 +153,89 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 새 이벤트 생성
-    const newEvent: CalendarEvent = {
-      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    // 이벤트 ID 생성
+    const eventId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // 데이터베이스에 저장
+    const eventData = {
+      id: eventId,
       title,
-      description,
-      type: type as CalendarEventType,
-      importance: importance as EventImportance,
+      description: description || null,
+      type: type as string,
+      importance: importance as string,
       status: 'scheduled',
-      startDate,
-      endDate,
-      isAllDay,
-      appId,
-      gameName,
+      start_date: startDate,
+      end_date: endDate || null,
+      is_all_day: isAllDay,
+      app_id: appId || null,
+      game_name: gameName || null,
       source: 'user',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      tags,
+      tags: tags || [],
+      created_by: user?.id || null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
-    // TODO: 데이터베이스에 저장
-    // 현재는 메모리/캐시에만 저장
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: savedEvent, error: saveError } = await (supabase as any)
+      .from('calendar_events')
+      .insert(eventData)
+      .select()
+      .single();
+
+    if (saveError) {
+      console.error('Calendar event save error:', saveError);
+      // 테이블 저장 실패해도 이벤트 객체 반환
+      const newEvent: CalendarEvent = {
+        id: eventId,
+        title: title!,
+        description,
+        type: type as CalendarEventType,
+        importance: importance as EventImportance,
+        status: 'scheduled',
+        startDate: startDate!,
+        endDate,
+        isAllDay,
+        appId,
+        gameName,
+        source: 'user',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        tags,
+      };
+      return NextResponse.json({
+        success: true,
+        data: newEvent,
+        saved: false,
+      }, { status: 201 });
+    }
+
+    // 캐시 무효화 (사용자 이벤트 추가됨)
+    // 패턴 매칭 삭제는 비효율적이므로 캐시 만료에 의존
+
+    // 저장된 데이터를 CalendarEvent 형식으로 변환
+    const newEvent: CalendarEvent = {
+      id: savedEvent.id,
+      title: savedEvent.title,
+      description: savedEvent.description,
+      type: savedEvent.type as CalendarEventType,
+      importance: savedEvent.importance as EventImportance,
+      status: savedEvent.status,
+      startDate: savedEvent.start_date,
+      endDate: savedEvent.end_date,
+      isAllDay: savedEvent.is_all_day,
+      appId: savedEvent.app_id,
+      gameName: savedEvent.game_name,
+      source: savedEvent.source,
+      createdAt: savedEvent.created_at,
+      updatedAt: savedEvent.updated_at,
+      tags: savedEvent.tags,
+    };
 
     return NextResponse.json({
       success: true,
       data: newEvent,
+      saved: true,
     }, { status: 201 });
 
   } catch (error) {
@@ -175,6 +244,76 @@ export async function POST(request: NextRequest) {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to create event',
     }, { status: 500 });
+  }
+}
+
+/**
+ * 데이터베이스에서 사용자 정의 이벤트 가져오기
+ */
+async function fetchUserEventsFromDB(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  filter: CalendarFilter
+): Promise<CalendarEvent[]> {
+  try {
+    let query = supabase
+      .from('calendar_events')
+      .select('*')
+      .order('start_date', { ascending: true });
+
+    // 날짜 필터 적용
+    if (filter.startDate) {
+      query = query.gte('start_date', filter.startDate);
+    }
+    if (filter.endDate) {
+      query = query.lte('start_date', filter.endDate);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error('User events fetch error:', error);
+      return [];
+    }
+
+    // DB 결과를 CalendarEvent 형식으로 변환
+    return (data || []).map((row: {
+      id: string;
+      title: string;
+      description: string | null;
+      type: string;
+      importance: string;
+      status: string;
+      start_date: string;
+      end_date: string | null;
+      is_all_day: boolean;
+      app_id: string | null;
+      game_name: string | null;
+      source: string;
+      source_url: string | null;
+      tags: string[] | null;
+      created_at: string;
+      updated_at: string;
+    }) => ({
+      id: row.id,
+      title: row.title,
+      description: row.description || undefined,
+      type: row.type as CalendarEventType,
+      importance: row.importance as EventImportance,
+      status: row.status as 'scheduled' | 'confirmed' | 'cancelled' | 'completed',
+      startDate: row.start_date,
+      endDate: row.end_date || undefined,
+      isAllDay: row.is_all_day,
+      appId: row.app_id || undefined,
+      gameName: row.game_name || undefined,
+      source: row.source as 'steam' | 'api' | 'user' | 'scrape',
+      sourceUrl: row.source_url || undefined,
+      tags: row.tags || undefined,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  } catch (error) {
+    console.error('Error fetching user events:', error);
+    return [];
   }
 }
 

@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/cron/collect-ccu",
+      "path": "/api/cron/collect-game-data",
       "schedule": "0 15 * * *"
     }
   ]
