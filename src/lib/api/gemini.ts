@@ -1,5 +1,17 @@
 import { createClient } from '@/lib/supabase/server';
 import { redis } from '@/lib/redis';
+import type {
+  StandardizedInsight,
+  InsightCategory,
+  CausationItem,
+  CorrelationItem,
+  GeminiInsightResponse,
+} from '@/types/insight';
+import {
+  generateInsightId,
+  getConfidenceLevel,
+} from '@/types/insight';
+import { INSIGHT_PROMPTS, parseGeminiResponse } from '@/lib/prompts/insightTemplates';
 
 // 환경 변수에서 Gemini API 키 배열 생성
 const GEMINI_KEYS = [
@@ -31,6 +43,11 @@ export const INSIGHT_TTL = {
   hype: 3600,          // 1시간
   watchlist: 3600,     // 1시간
   wishlist: 7200,      // 2시간
+  // 신규 InsightCore 카테고리
+  design: 21600,       // 6시간 (DesignPulse)
+  persona: 21600,      // 6시간 (PlayerDNA)
+  corefun: 14400,      // 4시간 (CoreFun)
+  f2p: 7200,           // 2시간
 };
 
 interface GeminiResponse {
@@ -573,5 +590,243 @@ ${gamesList}
   // 캐시 저장 (2시간)
   await setCachedInsight(cacheKey, insight, INSIGHT_TTL.wishlist);
 
+  return insight;
+}
+
+// ============================================================
+// InsightCore: 표준화된 인사이트 생성 시스템
+// PRD: PRD_Gemini_Insight_Framework.md 기반
+// ============================================================
+
+/**
+ * 표준화된 인사이트 생성 (InsightCore)
+ * 모든 인사이트를 원인(Causation) vs 상관관계(Correlation)로 분리
+ *
+ * @param category 인사이트 카테고리
+ * @param dataJson 분석할 데이터 (JSON 문자열)
+ * @param extra 추가 파라미터 (예: 선택된 태그)
+ * @returns 표준화된 인사이트 객체
+ */
+export async function generateStandardizedInsight(
+  category: InsightCategory,
+  dataJson: string,
+  extra?: unknown
+): Promise<StandardizedInsight> {
+  const startTime = Date.now();
+  const cacheKey = `v2:${category}:${hashString(dataJson)}`;
+
+  // 캐시 확인
+  const cached = await getCachedInsight(cacheKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached) as StandardizedInsight;
+      return parsed;
+    } catch {
+      // 캐시가 레거시 형식이면 무시하고 재생성
+    }
+  }
+
+  // 프롬프트 템플릿 가져오기
+  const promptFn = INSIGHT_PROMPTS[category];
+  if (!promptFn) {
+    throw new Error(`Unknown insight category: ${category}`);
+  }
+
+  const prompt = promptFn(dataJson, extra);
+
+  // Gemini API 호출
+  const rawResponse = await generateInsight(prompt);
+
+  // JSON 파싱
+  let parsed: GeminiInsightResponse;
+  try {
+    parsed = parseGeminiResponse(rawResponse) as GeminiInsightResponse;
+  } catch (parseError) {
+    console.error('Failed to parse Gemini response:', rawResponse);
+    throw new Error(`인사이트 파싱 실패: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+  }
+
+  // 표준화된 형식으로 변환
+  const insight = transformToStandardizedInsight(category, parsed, startTime);
+
+  // 캐시 저장
+  const ttl = INSIGHT_TTL[category] || INSIGHT_TTL.game;
+  await setCachedInsight(cacheKey, JSON.stringify(insight), ttl);
+
+  return insight;
+}
+
+/**
+ * Gemini 응답을 표준화된 인사이트 형식으로 변환
+ */
+function transformToStandardizedInsight(
+  category: InsightCategory,
+  response: GeminiInsightResponse,
+  startTime: number
+): StandardizedInsight {
+  const now = new Date();
+  const ttl = INSIGHT_TTL[category] || INSIGHT_TTL.game;
+  const expiresAt = new Date(now.getTime() + ttl * 1000);
+
+  // Causation 아이템 변환
+  const causation: CausationItem[] = (response.causation || []).map((c, i) => ({
+    id: `causation_${i}_${Date.now()}`,
+    title: c.title,
+    description: c.description,
+    confidence: c.confidence,
+    confidenceLevel: getConfidenceLevel(c.confidence),
+    evidence: c.evidence || [],
+    impact: c.impact,
+    recommendation: c.recommendation,
+  }));
+
+  // Correlation 아이템 변환
+  const correlation: CorrelationItem[] = (response.correlation || []).map((c, i) => ({
+    id: `correlation_${i}_${Date.now()}`,
+    title: c.title,
+    description: c.description,
+    strength: c.strength,
+    variables: c.variables || [],
+    disclaimer: '이 분석은 상관관계를 나타내며, 인과관계를 의미하지 않습니다.',
+  }));
+
+  return {
+    id: generateInsightId(),
+    category,
+    generatedAt: now.toISOString(),
+    expiresAt: expiresAt.toISOString(),
+    causation,
+    correlation,
+    summary: {
+      headline: response.summary?.headline || '분석 완료',
+      keyPoints: response.summary?.keyPoints || [],
+      actionItems: response.summary?.actionItems,
+      overallSentiment: response.summary?.overallSentiment,
+    },
+    metadata: {
+      model: 'gemini-2.5-flash',
+      promptVersion: '2.0',
+      dataPoints: 0, // 호출 측에서 업데이트 가능
+      processingTimeMs: Date.now() - startTime,
+    },
+  };
+}
+
+/**
+ * 간단한 문자열 해시 (캐시 키 생성용)
+ */
+function hashString(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash).toString(36);
+}
+
+/**
+ * 트렌딩 표준화 인사이트 생성
+ */
+export async function generateTrendingStandardizedInsight(
+  trendingGames: Array<{
+    name: string;
+    ccu: number;
+    ccuChange: number;
+    reviewScore: number;
+    tags?: string[];
+  }>
+): Promise<StandardizedInsight> {
+  const dataJson = JSON.stringify({
+    games: trendingGames.slice(0, 15).map((g, i) => ({
+      rank: i + 1,
+      name: g.name,
+      ccu: g.ccu,
+      ccuChange: `${g.ccuChange > 0 ? '+' : ''}${g.ccuChange.toFixed(1)}%`,
+      reviewScore: `${g.reviewScore}%`,
+      tags: g.tags?.slice(0, 5) || [],
+    })),
+    analyzedAt: new Date().toISOString(),
+  }, null, 2);
+
+  const insight = await generateStandardizedInsight('trending', dataJson);
+  insight.metadata.dataPoints = trendingGames.length;
+  return insight;
+}
+
+/**
+ * 게임 상세 표준화 인사이트 생성
+ */
+export async function generateGameStandardizedInsight(gameData: {
+  name: string;
+  appId: number;
+  developer?: string;
+  publisher?: string;
+  releaseDate?: string;
+  genres?: string[];
+  tags?: string[];
+  price?: number;
+  ccu?: number;
+  totalReviews?: number;
+  positiveRatio?: number;
+  estimatedRevenue?: number;
+  estimatedSales?: number;
+}): Promise<StandardizedInsight> {
+  const dataJson = JSON.stringify({
+    game: {
+      name: gameData.name,
+      appId: gameData.appId,
+      developer: gameData.developer || 'N/A',
+      publisher: gameData.publisher || 'N/A',
+      releaseDate: gameData.releaseDate || 'N/A',
+      genres: gameData.genres || [],
+      tags: gameData.tags?.slice(0, 10) || [],
+      price: gameData.price ? `$${gameData.price}` : '무료',
+    },
+    metrics: {
+      currentCCU: gameData.ccu?.toLocaleString() || 'N/A',
+      totalReviews: gameData.totalReviews?.toLocaleString() || 'N/A',
+      positiveRatio: gameData.positiveRatio ? `${gameData.positiveRatio}%` : 'N/A',
+      estimatedSales: gameData.estimatedSales?.toLocaleString() || 'N/A',
+      estimatedRevenue: gameData.estimatedRevenue
+        ? `$${gameData.estimatedRevenue.toLocaleString()}`
+        : 'N/A',
+    },
+    analyzedAt: new Date().toISOString(),
+  }, null, 2);
+
+  const insight = await generateStandardizedInsight('game', dataJson);
+  insight.metadata.dataPoints = 1;
+  return insight;
+}
+
+/**
+ * 기회 시장 표준화 인사이트 생성
+ */
+export async function generateOpportunityStandardizedInsight(
+  opportunities: Array<{
+    tags: string[];
+    avgReviews: number;
+    gameCount: number;
+    successRate: number;
+    opportunityScore: number;
+  }>,
+  selectedTags?: string[]
+): Promise<StandardizedInsight> {
+  const dataJson = JSON.stringify({
+    opportunities: opportunities.slice(0, 15).map((o, i) => ({
+      rank: i + 1,
+      tagCombo: o.tags.join(' + '),
+      avgReviews: o.avgReviews.toLocaleString(),
+      gameCount: o.gameCount,
+      successRate: `${(o.successRate * 100).toFixed(1)}%`,
+      opportunityScore: o.opportunityScore.toFixed(2),
+    })),
+    selectedTags: selectedTags || [],
+    analyzedAt: new Date().toISOString(),
+  }, null, 2);
+
+  const insight = await generateStandardizedInsight('opportunity', dataJson, selectedTags);
+  insight.metadata.dataPoints = opportunities.length;
   return insight;
 }
