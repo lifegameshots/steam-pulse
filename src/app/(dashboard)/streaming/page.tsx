@@ -41,13 +41,22 @@ export default function StreamingPage() {
       const data = await res.json();
       // 에러 응답 체크
       if (data.error) throw new Error(data.error);
-      return data as StreamingDashboardData;
+      return data as StreamingDashboardData & {
+        _meta?: {
+          apiConfigured: boolean;
+          missingKeys: string[];
+          message: string;
+        };
+      };
     },
     refetchInterval: 60000, // 1분마다 자동 갱신
     staleTime: 30000, // 30초간 fresh
     retry: 2,
     retryDelay: 1000,
   });
+
+  // API 미설정 상태 확인
+  const apiNotConfigured = dashboard?._meta?.apiConfigured === false;
 
   // 로딩 타임아웃 처리
   useEffect(() => {
@@ -112,12 +121,28 @@ export default function StreamingPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="게임 이름으로 라이브 스트림 검색..."
+              placeholder="게임 이름으로 라이브 스트림 검색 (예: PUBG, Minecraft, 발로란트)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
+
+          {/* 검색 가이드 */}
+          {searchQuery.trim().length === 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="text-slate-500 text-xs">인기 검색어:</span>
+              {['PUBG', 'Minecraft', 'VALORANT', 'League of Legends', '로스트아크'].map((game) => (
+                <button
+                  key={game}
+                  onClick={() => setSearchQuery(game)}
+                  className="text-xs px-2 py-1 bg-slate-700/50 hover:bg-slate-600/50 text-slate-400 hover:text-white rounded transition-colors"
+                >
+                  {game}
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* 검색 결과 */}
           {searchQuery.trim().length >= 2 && (
@@ -125,12 +150,17 @@ export default function StreamingPage() {
               {searching ? (
                 <div className="flex items-center gap-2 text-slate-400 text-sm">
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  검색 중...
+                  Twitch, Chzzk에서 검색 중...
                 </div>
               ) : searchResults?.streams?.length > 0 ? (
                 <LiveStreamList streams={searchResults.streams} compact />
               ) : (
-                <p className="text-slate-400 text-sm">검색 결과가 없습니다</p>
+                <div className="text-slate-400 text-sm">
+                  <p>"{searchQuery}"에 대한 검색 결과가 없습니다</p>
+                  <p className="text-xs mt-1 text-slate-500">
+                    Tip: 게임 영문명이나 약어로 검색해보세요 (예: "배틀그라운드" 대신 "PUBG")
+                  </p>
+                </div>
               )}
             </div>
           )}
@@ -170,6 +200,27 @@ export default function StreamingPage() {
           onRetry={() => refetch()}
           showDetails={process.env.NODE_ENV === 'development'}
         />
+      ) : apiNotConfigured ? (
+        <Card className="bg-amber-900/20 border-amber-700">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="w-12 h-12 text-amber-500 mb-4" />
+            <h3 className="text-lg font-semibold text-amber-400 mb-2">API 키 미설정</h3>
+            <p className="text-slate-400 text-center mb-4 max-w-md">
+              {dashboard._meta?.message || 'Twitch/Chzzk API 키가 설정되지 않았습니다.'}
+            </p>
+            <div className="text-xs text-slate-500 mb-4">
+              <p>필요한 환경변수:</p>
+              <ul className="list-disc list-inside mt-1">
+                {dashboard._meta?.missingKeys.map((key) => (
+                  <li key={key}>{key}</li>
+                ))}
+              </ul>
+            </div>
+            <p className="text-xs text-slate-500">
+              Vercel Dashboard → Settings → Environment Variables에서 설정하세요.
+            </p>
+          </CardContent>
+        </Card>
       ) : isEmpty ? (
         <EmptyState
           type="collecting"

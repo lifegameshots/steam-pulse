@@ -124,16 +124,65 @@ async function twitchFetch<T>(endpoint: string, params?: Record<string, string>)
 }
 
 /**
- * 게임 이름으로 Twitch 게임 ID 조회
+ * 게임 이름 정규화 (Steam 이름 → Twitch 이름 변환)
+ */
+function normalizeGameName(gameName: string): string[] {
+  // 원본 이름
+  const names = [gameName];
+
+  // 콜론 이후 제거 (PUBG: BATTLEGROUNDS → PUBG)
+  if (gameName.includes(':')) {
+    names.push(gameName.split(':')[0].trim());
+  }
+
+  // 특수문자 제거 버전
+  const simplified = gameName.replace(/[:\-™®©]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (simplified !== gameName) {
+    names.push(simplified);
+  }
+
+  // 알려진 매핑 (Steam 이름 → Twitch 이름)
+  const knownMappings: Record<string, string> = {
+    'PUBG: BATTLEGROUNDS': 'PUBG: BATTLEGROUNDS',
+    'Counter-Strike 2': 'Counter-Strike',
+    'Counter-Strike: Global Offensive': 'Counter-Strike',
+    'Dota 2': 'Dota 2',
+    'VALORANT': 'VALORANT',
+    'League of Legends': 'League of Legends',
+    'Apex Legends': 'Apex Legends',
+    'Overwatch 2': 'Overwatch 2',
+    'Fortnite': 'Fortnite',
+    'Minecraft': 'Minecraft',
+    'Grand Theft Auto V': 'Grand Theft Auto V',
+    'GTA V': 'Grand Theft Auto V',
+  };
+
+  const mapped = knownMappings[gameName];
+  if (mapped && !names.includes(mapped)) {
+    names.unshift(mapped); // 매핑된 이름을 우선
+  }
+
+  return names;
+}
+
+/**
+ * 게임 이름으로 Twitch 게임 ID 조회 (여러 이름 시도)
  */
 export async function getGameByName(gameName: string): Promise<TwitchGame | null> {
-  try {
-    const data = await twitchFetch<{ data: TwitchGame[] }>('/games', { name: gameName });
-    return data.data[0] || null;
-  } catch (error) {
-    console.error('Failed to get Twitch game:', error);
-    return null;
+  const namesToTry = normalizeGameName(gameName);
+
+  for (const name of namesToTry) {
+    try {
+      const data = await twitchFetch<{ data: TwitchGame[] }>('/games', { name });
+      if (data.data[0]) {
+        return data.data[0];
+      }
+    } catch (error) {
+      console.error(`Failed to get Twitch game for "${name}":`, error);
+    }
   }
+
+  return null;
 }
 
 /**

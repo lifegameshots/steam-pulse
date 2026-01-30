@@ -194,24 +194,68 @@ export async function getPopularLives(options?: { size?: number }): Promise<Chzz
 }
 
 /**
- * 게임 카테고리 검색
+ * 게임 이름 정규화 (여러 검색어 생성)
+ */
+function normalizeGameName(gameName: string): string[] {
+  const names = [gameName];
+
+  // 콜론 이후 제거
+  if (gameName.includes(':')) {
+    names.push(gameName.split(':')[0].trim());
+  }
+
+  // 특수문자 제거
+  const simplified = gameName.replace(/[:\-™®©]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (simplified !== gameName) {
+    names.push(simplified);
+  }
+
+  // 알려진 한글 매핑
+  const koreanMappings: Record<string, string> = {
+    'PUBG: BATTLEGROUNDS': '배틀그라운드',
+    'League of Legends': '리그 오브 레전드',
+    'VALORANT': '발로란트',
+    'Overwatch 2': '오버워치',
+    'Minecraft': '마인크래프트',
+    'MapleStory': '메이플스토리',
+    'Lost Ark': '로스트아크',
+  };
+
+  const korean = koreanMappings[gameName];
+  if (korean) {
+    names.unshift(korean);
+  }
+
+  return names;
+}
+
+/**
+ * 게임 카테고리 검색 (여러 이름 시도)
  */
 export async function searchGameCategory(
   keyword: string
 ): Promise<Array<{ categoryId: string; categoryName: string; posterImageUrl: string }>> {
-  try {
-    const data = await chzzkFetch<{
-      data: Array<{
-        categoryId: string;
-        categoryName: string;
-        posterImageUrl: string;
-      }>
-    }>(`/service/v1/categories/search?keyword=${encodeURIComponent(keyword)}&categoryType=GAME`);
-    return data.data || [];
-  } catch (error) {
-    console.error('Failed to search Chzzk game category:', error);
-    return [];
+  const namesToTry = normalizeGameName(keyword);
+
+  for (const name of namesToTry) {
+    try {
+      const data = await chzzkFetch<{
+        data: Array<{
+          categoryId: string;
+          categoryName: string;
+          posterImageUrl: string;
+        }>
+      }>(`/service/v1/categories/search?keyword=${encodeURIComponent(name)}&categoryType=GAME`);
+
+      if (data.data && data.data.length > 0) {
+        return data.data;
+      }
+    } catch (error) {
+      console.error(`Failed to search Chzzk game category for "${name}":`, error);
+    }
   }
+
+  return [];
 }
 
 /**
