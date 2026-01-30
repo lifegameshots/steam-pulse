@@ -3,7 +3,8 @@
 
 import { redis } from '@/lib/redis';
 
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+// 환경변수를 함수 내부에서 읽도록 변경 (런타임에 확인)
+const getYouTubeApiKey = () => process.env.YOUTUBE_API_KEY;
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
 
 // 캐시 TTL
@@ -116,7 +117,8 @@ export async function searchYouTubeVideos(
     videoDuration?: 'short' | 'medium' | 'long';
   } = {}
 ): Promise<YouTubeSearchResult> {
-  if (!YOUTUBE_API_KEY) {
+  const apiKey = getYouTubeApiKey();
+  if (!apiKey) {
     throw new Error('YouTube API key not configured');
   }
 
@@ -135,7 +137,7 @@ export async function searchYouTubeVideos(
   if (cached) return cached;
 
   const params = new URLSearchParams({
-    key: YOUTUBE_API_KEY,
+    key: apiKey,
     part: 'snippet',
     type: 'video',
     q: query,
@@ -182,7 +184,8 @@ export async function searchYouTubeVideos(
  * 비디오 상세 정보 가져오기
  */
 export async function getVideoDetails(videoIds: string[]): Promise<YouTubeVideo[]> {
-  if (!YOUTUBE_API_KEY || videoIds.length === 0) {
+  const apiKey = getYouTubeApiKey();
+  if (!apiKey || videoIds.length === 0) {
     return [];
   }
 
@@ -204,7 +207,7 @@ export async function getVideoDetails(videoIds: string[]): Promise<YouTubeVideo[
   }
 
   const params = new URLSearchParams({
-    key: YOUTUBE_API_KEY,
+    key: apiKey,
     part: 'snippet,contentDetails,statistics',
     id: uncachedIds.join(','),
   });
@@ -248,7 +251,8 @@ export async function getVideoDetails(videoIds: string[]): Promise<YouTubeVideo[
  * 채널 정보 가져오기
  */
 export async function getChannelDetails(channelIds: string[]): Promise<YouTubeChannel[]> {
-  if (!YOUTUBE_API_KEY || channelIds.length === 0) {
+  const apiKey = getYouTubeApiKey();
+  if (!apiKey || channelIds.length === 0) {
     return [];
   }
 
@@ -270,7 +274,7 @@ export async function getChannelDetails(channelIds: string[]): Promise<YouTubeCh
   }
 
   const params = new URLSearchParams({
-    key: YOUTUBE_API_KEY,
+    key: apiKey,
     part: 'snippet,statistics',
     id: uncachedIds.join(','),
   });
