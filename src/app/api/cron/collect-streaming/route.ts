@@ -10,7 +10,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as twitch from '@/lib/streaming/twitch';
 import * as chzzk from '@/lib/streaming/chzzk';
 import { standardizeGameName } from '@/lib/streaming/gameNameMatcher';
-import type { Database } from '@/types/database';
+import type { Database, Json } from '@/types/database';
 
 // Supabase 클라이언트 (서비스 롤)
 const supabase = createClient<Database>(
@@ -251,7 +251,7 @@ async function insertStreamingHistory(
       live_streams: data.liveStreams,
       peak_viewers: data.peakViewers,
       unique_streamers: data.uniqueStreamers,
-      top_streamers: data.topStreamers,
+      top_streamers: data.topStreamers as unknown as Json,
       recorded_at: recordedAt,
     }, {
       onConflict: 'game_name,platform,recorded_at',
