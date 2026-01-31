@@ -59,7 +59,12 @@
       "Bash(\"C:/Users/qksk1/AppData/Roaming/fnm/node-versions/v22.14.0/installation/node.exe\" \"C:/Users/qksk1/AppData/Roaming/fnm/node-versions/v22.14.0/installation/node_modules/npm/bin/npm-cli.js\" run build)",
       "Bash(export PATH=\"/c/Program Files/nodejs:/c/Users/qksk1/AppData/Roaming/npm:$PATH\":*)",
       "Bash(npm --version:*)",
-      "Bash(git diff:*)"
+      "Bash(git diff:*)",
+      "Bash(/c/Program Files/nodejs/npm.cmd run lint)",
+      "Bash(powershell.exe -Command \"cd ''C:\\\\Users\\\\qksk1\\\\OneDrive\\\\Desktop\\\\steam-pulse-main''; npm run lint 2>&1 | Select-Object -First 100\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\qksk1\\\\OneDrive\\\\Desktop\\\\steam-pulse-main && npx eslint src/app/api/reports/route.ts src/app/api/reports/generate/route.ts src/lib/prompts/reportTemplates.ts src/components/reports/CreateReportDialog.tsx --max-warnings=0 2>&1\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\qksk1\\\\OneDrive\\\\Desktop\\\\steam-pulse-main && npx eslint --version\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\qksk1\\\\OneDrive\\\\Desktop\\\\steam-pulse-main && node -v && npx eslint src\\\\app\\\\api\\\\reports\\\\route.ts\")"
     ]
   }
 }

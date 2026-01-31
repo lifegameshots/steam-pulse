@@ -319,16 +319,21 @@ export function CreateReportDialog({
             </div>
 
             {effectiveAppIds.length > 0 && (
-              <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+              <div className="p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30">
                 <div className="flex items-center gap-2 text-blue-400">
                   <Sparkles className="w-4 h-4" />
-                  <span className="text-sm font-medium">AI 자동 생성</span>
+                  <span className="text-sm font-medium">AI 자동 분석</span>
                   <CheckCircle className="w-4 h-4 text-green-400" />
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
-                  {effectiveAppIds.length}개의 게임 데이터를 기반으로 리포트 내용이
-                  자동으로 생성됩니다.
+                  Gemini AI가 {effectiveAppIds.length}개 게임의 CCU, 리뷰, 매출 데이터를
+                  분석하여 인사이트를 생성합니다.
                 </p>
+                <ul className="mt-2 text-xs text-slate-500 space-y-1">
+                  <li>• SWOT 분석 및 시장 포지션 평가</li>
+                  <li>• 경쟁사 비교 및 차별화 포인트</li>
+                  <li>• 액션 아이템 및 권장 사항</li>
+                </ul>
               </div>
             )}
 
@@ -343,12 +348,21 @@ export function CreateReportDialog({
               <Button
                 onClick={handleCreate}
                 disabled={createMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700"
+                className={
+                  effectiveAppIds.length > 0
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                }
               >
                 {createMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    생성 중...
+                    {effectiveAppIds.length > 0 ? 'AI 분석 중...' : '생성 중...'}
+                  </>
+                ) : effectiveAppIds.length > 0 ? (
+                  <>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    AI 리포트 생성
                   </>
                 ) : (
                   '리포트 생성'
