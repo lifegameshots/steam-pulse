@@ -128,9 +128,9 @@ export async function GET(request: NextRequest) {
         (gameStats as StreamerGame[]).forEach(gs => {
           if (gs.streamer_id) {
             streamerGameStats.set(gs.streamer_id, {
-              totalStreams: gs.total_streams,
-              avgViewers: gs.avg_viewers,
-              peakViewers: gs.peak_viewers,
+              totalStreams: gs.total_streams ?? 0,
+              avgViewers: gs.avg_viewers ?? 0,
+              peakViewers: gs.peak_viewers ?? 0,
               lastStreamedAt: gs.last_streamed_at,
             });
           }
