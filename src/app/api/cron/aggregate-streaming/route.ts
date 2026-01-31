@@ -148,9 +148,9 @@ async function updateGameDailyMetrics(targetDate: string): Promise<number> {
         .eq('app_id', stat.steam_app_id)
         .gte('recorded_at', `${targetDate}T00:00:00`)
         .lt('recorded_at', `${targetDate}T23:59:59`)
-        .order('ccu', { ascending: false });
+        .order('ccu', { ascending: false }) as { data: { ccu: number }[] | null };
 
-      const ccuPeak = ccuData?.[0]?.ccu || null;
+      const ccuPeak = ccuData?.[0]?.ccu ?? null;
       const ccuAvg = ccuData && ccuData.length > 0
         ? Math.round(ccuData.reduce((sum, d) => sum + d.ccu, 0) / ccuData.length)
         : null;
@@ -163,7 +163,7 @@ async function updateGameDailyMetrics(targetDate: string): Promise<number> {
         .gte('recorded_at', `${targetDate}T00:00:00`)
         .lt('recorded_at', `${targetDate}T23:59:59`)
         .order('recorded_at', { ascending: false })
-        .limit(1);
+        .limit(1) as { data: { total_reviews: number; positive: number }[] | null };
 
       // game_daily_metrics upsert
       const { error: upsertError } = await supabase
@@ -242,7 +242,7 @@ async function calculateChangeRates(targetDate: string): Promise<number> {
         .select('ccu_avg, streaming_viewers_avg')
         .eq('steam_app_id', today.steam_app_id)
         .eq('date', date1dAgoStr)
-        .single();
+        .single() as { data: { ccu_avg: number | null; streaming_viewers_avg: number | null } | null };
 
       // 7일 전 데이터
       const { data: data7d } = await supabase
@@ -250,7 +250,7 @@ async function calculateChangeRates(targetDate: string): Promise<number> {
         .select('ccu_avg, streaming_viewers_avg')
         .eq('steam_app_id', today.steam_app_id)
         .eq('date', date7dAgoStr)
-        .single();
+        .single() as { data: { ccu_avg: number | null; streaming_viewers_avg: number | null } | null };
 
       // 변화율 계산
       const ccuChange1d = data1d?.ccu_avg && today.ccu_avg
