@@ -144,6 +144,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   multiplayer: '멀티플레이',
   mood: '분위기',
   special: '특수',
+  perspective: '시점',
 };
 
 export function TagSimulator() {

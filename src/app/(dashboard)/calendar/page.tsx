@@ -157,9 +157,9 @@ export default function CalendarPage() {
 
       {/* 다가오는 이벤트 */}
       {upcomingEvents.length > 0 && (
-        <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
+        <Card className="bg-card border-blue-500/30 dark:border-blue-400/30">
           <CardHeader className="px-4 sm:px-6 pb-2">
-            <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-blue-700 dark:text-blue-300">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-blue-600 dark:text-blue-400">
               <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
               60일 내 다가오는 이벤트
             </CardTitle>
@@ -169,7 +169,7 @@ export default function CalendarPage() {
               {upcomingEvents.map((event) => {
                 const daysLeft = getDaysUntilEvent(event);
                 return (
-                  <div key={event.id} className="flex items-center gap-2 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex-wrap">
+                  <div key={event.id} className="flex items-center gap-2 p-3 bg-blue-500/10 dark:bg-blue-500/20 rounded-lg flex-wrap">
                     {getEventTypeIcon(event.type)}
                     <span className="font-medium text-sm sm:text-base flex-1">{event.nameKr}</span>
                     <Badge variant="outline" className="text-xs">

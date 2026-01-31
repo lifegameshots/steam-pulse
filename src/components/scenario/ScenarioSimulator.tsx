@@ -471,21 +471,21 @@ function SimulationResultView({ result }: { result: SimulationResult }) {
           </CardHeader>
           <CardContent className="space-y-3">
             {result.risks.map((risk, i) => (
-              <div key={i} className="p-3 bg-red-50 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{risk.risk}</span>
+              <div key={i} className="p-3 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-red-900 dark:text-red-100">{risk.risk}</span>
                   <Badge variant={risk.impact === 'high' ? 'destructive' : 'secondary'}>
                     {risk.impact === 'high' ? '높음' : risk.impact === 'medium' ? '보통' : '낮음'}
                   </Badge>
                 </div>
                 <div className="mt-2">
-                  <div className="text-xs text-muted-foreground mb-1">
+                  <div className="text-xs text-red-700 dark:text-red-300 mb-1.5">
                     발생 확률: {risk.probability}%
                   </div>
-                  <Progress value={risk.probability} className="h-1" />
+                  <Progress value={risk.probability} className="h-1.5" />
                 </div>
                 {risk.mitigation && (
-                  <p className="text-xs text-muted-foreground mt-2">
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-2">
                     대응: {risk.mitigation}
                   </p>
                 )}
@@ -500,21 +500,21 @@ function SimulationResultView({ result }: { result: SimulationResult }) {
           </CardHeader>
           <CardContent className="space-y-3">
             {result.opportunities.map((opp, i) => (
-              <div key={i} className="p-3 bg-green-50 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{opp.opportunity}</span>
+              <div key={i} className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-green-900 dark:text-green-100">{opp.opportunity}</span>
                   <Badge variant={opp.potential === 'high' ? 'default' : 'secondary'}>
                     {opp.potential === 'high' ? '높음' : opp.potential === 'medium' ? '보통' : '낮음'}
                   </Badge>
                 </div>
                 <div className="mt-2">
-                  <div className="text-xs text-muted-foreground mb-1">
+                  <div className="text-xs text-green-700 dark:text-green-300 mb-1.5">
                     실현 가능성: {opp.probability}%
                   </div>
-                  <Progress value={opp.probability} className="h-1" />
+                  <Progress value={opp.probability} className="h-1.5" />
                 </div>
                 {opp.action && (
-                  <p className="text-xs text-muted-foreground mt-2">
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-2">
                     권장 액션: {opp.action}
                   </p>
                 )}
