@@ -444,10 +444,12 @@ export async function getTopGameStreams(): Promise<Array<{
         const categoryMap = new Map<string, { name: string; viewers: number; count: number }>();
 
         lives.forEach(live => {
-          // 다양한 필드명 시도 (API 버전에 따라 다를 수 있음)
-          const categoryId = live.liveCategory || live.categoryId || live.gameId;
-          const categoryName = live.liveCategoryValue || live.categoryValue || live.gameName || categoryId || 'Unknown';
-          const viewers = live.concurrentUserCount || live.viewerCount || live.viewers || 0;
+          // ChzzkLive 타입에 맞게 필드 접근
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const liveAny = live as any; // API 응답이 타입과 다를 수 있음
+          const categoryId = live.liveCategory || liveAny.categoryId || liveAny.gameId;
+          const categoryName = live.liveCategoryValue || liveAny.categoryValue || liveAny.gameName || categoryId || 'Unknown';
+          const viewers = live.concurrentUserCount || liveAny.viewerCount || liveAny.viewers || 0;
 
           if (categoryId) {
             const existing = categoryMap.get(categoryId) || { name: categoryName, viewers: 0, count: 0 };
