@@ -41,16 +41,21 @@ export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [filterType, setFilterType] = useState<ReportType | 'all'>('all');
 
-  const { data: reports, isLoading } = useQuery({
+  const { data: reportsData, isLoading, error } = useQuery({
     queryKey: ['reports'],
     queryFn: async () => {
       const res = await fetch('/api/reports');
-      if (!res.ok) throw new Error('Failed to fetch reports');
-      return res.json() as Promise<{ reports: Report[] }>;
+      const json = await res.json();
+      // API 응답 구조: { success: true, data: { reports: [...] } }
+      if (!res.ok || !json.success) {
+        // 인증 에러 등의 경우 빈 배열 반환
+        return { reports: [] as Report[], total: 0 };
+      }
+      return json.data as { reports: Report[]; total: number };
     },
   });
 
-  const filteredReports = reports?.reports.filter(
+  const filteredReports = reportsData?.reports.filter(
     (r) => filterType === 'all' || r.type === filterType
   );
 

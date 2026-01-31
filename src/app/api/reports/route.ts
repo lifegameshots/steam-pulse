@@ -23,10 +23,13 @@ export async function GET(request: NextRequest) {
     // 현재 사용자 확인
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      // 인증되지 않은 경우 빈 목록 반환
       return NextResponse.json({
-        success: false,
-        error: '인증이 필요합니다',
-      }, { status: 401 });
+        success: true,
+        data: { reports: [], total: 0, page: 1, pageSize: 20 },
+        cached: false,
+        message: '로그인 후 리포트를 관리할 수 있습니다',
+      });
     }
 
     // 쿼리 파라미터
