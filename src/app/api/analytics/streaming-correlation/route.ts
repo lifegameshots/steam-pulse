@@ -9,13 +9,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/types/database';
+import type { Database, Tables } from '@/types/database';
 import { analyzeStreamingCorrelation } from '@/lib/algorithms/streamingCorrelation';
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+type GameDailyMetric = Tables<'game_daily_metrics'>;
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,12 +48,14 @@ export async function GET(request: NextRequest) {
     const startDateStr = startDate.toISOString().split('T')[0];
 
     // game_daily_metrics에서 데이터 조회
-    const { data: metrics, error: metricsError } = await supabase
+    const { data, error: metricsError } = await supabase
       .from('game_daily_metrics')
       .select('*')
       .eq('steam_app_id', appId)
       .gte('date', startDateStr)
       .order('date', { ascending: true });
+
+    const metrics = data as GameDailyMetric[] | null;
 
     if (metricsError) {
       throw metricsError;

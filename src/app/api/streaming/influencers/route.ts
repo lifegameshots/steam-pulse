@@ -16,17 +16,20 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/types/database';
-import type { StreamerTier, StreamingPlatform } from '@/types/streaming';
+import type { Database, Tables } from '@/types/database';
+import type { StreamingPlatform } from '@/types/streaming';
 import {
   createInfluencerCandidate,
-  determineStreamerTier,
 } from '@/lib/algorithms/influencerImpact';
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+type Streamer = Tables<'streamers'>;
+type StreamerGame = Tables<'streamer_games'>;
+type StreamerActivity = Tables<'streamer_activity'>;
 
 export async function GET(request: NextRequest) {
   try {
@@ -72,7 +75,8 @@ export async function GET(request: NextRequest) {
       query = query.eq('language', language);
     }
 
-    const { data: streamers, error: streamersError } = await query;
+    const { data: rawStreamers, error: streamersError } = await query;
+    const streamers = rawStreamers as Streamer[] | null;
 
     if (streamersError) {
       throw streamersError;
@@ -117,10 +121,11 @@ export async function GET(request: NextRequest) {
         gameQuery = gameQuery.eq('steam_app_id', parseInt(steamAppId));
       }
 
-      const { data: gameStats } = await gameQuery;
+      const { data: rawGameStats } = await gameQuery;
+      const gameStats = rawGameStats as StreamerGame[] | null;
 
       if (gameStats) {
-        gameStats.forEach(gs => {
+        (gameStats as StreamerGame[]).forEach(gs => {
           streamerGameStats.set(gs.streamer_id, {
             totalStreams: gs.total_streams,
             avgViewers: gs.avg_viewers,
@@ -133,12 +138,14 @@ export async function GET(request: NextRequest) {
 
     // 최근 활동 데이터 조회
     const streamerIds = streamers.map(s => s.id);
-    const { data: recentActivity } = await supabase
+    const { data: rawRecentActivity } = await supabase
       .from('streamer_activity')
       .select('streamer_id, game_name, viewer_count')
       .in('streamer_id', streamerIds)
       .gte('recorded_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
       .order('recorded_at', { ascending: false });
+
+    const recentActivity = rawRecentActivity as Pick<StreamerActivity, 'streamer_id' | 'game_name' | 'viewer_count'>[] | null;
 
     // 스트리머별 최근 게임 목록
     const recentGamesMap = new Map<string, string[]>();

@@ -7,13 +7,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/types/database';
+import type { Database, Tables } from '@/types/database';
 
 // Supabase 클라이언트 (서비스 롤)
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+type StreamingDailyStat = Tables<'streaming_daily_stats'>;
+type GameDailyMetric = Tables<'game_daily_metrics'>;
 
 // Cron 인증 키
 const CRON_SECRET = process.env.CRON_SECRET || '';
@@ -87,11 +90,13 @@ export async function GET(request: NextRequest) {
 async function updateGameDailyMetrics(targetDate: string): Promise<number> {
   try {
     // 해당 날짜의 스트리밍 일별 통계 조회
-    const { data: streamingStats, error: statsError } = await supabase
+    const { data: rawStreamingStats, error: statsError } = await supabase
       .from('streaming_daily_stats')
       .select('*')
       .eq('date', targetDate)
       .eq('platform', 'total');
+
+    const streamingStats = rawStreamingStats as StreamingDailyStat[] | null;
 
     if (statsError) {
       console.error('[Cron] Error fetching streaming stats:', statsError);
@@ -104,16 +109,18 @@ async function updateGameDailyMetrics(targetDate: string): Promise<number> {
     }
 
     // 플랫폼별 데이터도 조회
-    const { data: platformStats } = await supabase
+    const { data: rawPlatformStats } = await supabase
       .from('streaming_daily_stats')
       .select('*')
       .eq('date', targetDate)
       .in('platform', ['twitch', 'chzzk']);
 
+    const platformStats = rawPlatformStats as StreamingDailyStat[] | null;
+
     // 게임별로 플랫폼 데이터 매핑
     const platformDataMap = new Map<string, {
-      twitch?: typeof platformStats[0];
-      chzzk?: typeof platformStats[0];
+      twitch?: StreamingDailyStat;
+      chzzk?: StreamingDailyStat;
     }>();
 
     for (const stat of platformStats || []) {
@@ -215,10 +222,12 @@ async function calculateChangeRates(targetDate: string): Promise<number> {
     const date7dAgoStr = date7dAgo.toISOString().split('T')[0];
 
     // 오늘 데이터 조회
-    const { data: todayData } = await supabase
+    const { data: rawTodayData } = await supabase
       .from('game_daily_metrics')
       .select('*')
       .eq('date', targetDate);
+
+    const todayData = rawTodayData as GameDailyMetric[] | null;
 
     if (!todayData || todayData.length === 0) {
       return 0;

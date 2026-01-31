@@ -12,12 +12,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import type { Database } from '@/types/database';
+import type { Database, Tables } from '@/types/database';
 
 const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
+
+type StreamingHistory = Tables<'streaming_history'>;
+type StreamingDailyStats = Tables<'streaming_daily_stats'>;
 
 export async function GET(request: NextRequest) {
   try {
@@ -72,7 +75,8 @@ export async function GET(request: NextRequest) {
         query = query.eq('platform', platform);
       }
 
-      const { data, error } = await query;
+      const { data: rawData, error } = await query;
+      const data = rawData as StreamingHistory[] | null;
 
       if (error) {
         throw error;
@@ -114,7 +118,8 @@ export async function GET(request: NextRequest) {
         query = query.eq('platform', platform);
       }
 
-      const { data, error } = await query;
+      const { data: rawData, error } = await query;
+      const data = rawData as StreamingDailyStats[] | null;
 
       if (error) {
         throw error;

@@ -12,7 +12,14 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nfix: 검색 가격 NaN, 상세페이지 가격 포맷, IGDB 연동, YouTube 분석 개선\n\n- 검색 결과 가격 NaN 문제 수정 \\(Steam Search API price 정규화\\)\n- 상세 페이지 가격 \"0$59.99\" 포맷 문제 수정 \\(finalFormatted 필드 추가\\)\n- IGDB 정보 연동 개선 \\(Steam ID 미발견시 게임 이름으로 fallback 검색\\)\n- YouTube 비디오 분석 품질 개선\n  - 감정 분석 키워드 대폭 확장 \\(한국어/영어\\)\n  - 좋아요/조회수 비율 반영\n  - 리뷰/추천 영상 기본 긍정 점수 부여\n  - 다양한 검색어로 검색 후 결과 병합\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git config:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:chzzk.gitbook.io)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run lint)",
+      "WebFetch(domain:api-docs.igdb.com)"
     ]
   }
 }
