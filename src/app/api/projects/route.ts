@@ -9,8 +9,12 @@ import type {
   Project,
   CreateProjectRequest,
   ProjectListResponse,
-  DEFAULT_PROJECT_SETTINGS,
 } from '@/types/project';
+import {
+  dbRowsToProjects,
+  dbRowToProject,
+  type ProjectDbRow,
+} from '@/lib/validation/projectJson';
 
 const CACHE_TTL = 300; // 5분
 
@@ -103,33 +107,10 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const projects = (projectsData || []) as any[];
-
-    // 프로젝트 데이터 변환
-    const transformedProjects: Project[] = projects.map(p => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      type: p.type,
-      status: p.status,
-      visibility: p.visibility,
-      ownerId: p.owner_id,
-      ownerEmail: p.owner_email,
-      games: p.games || [],
-      members: p.members || [],
-      notes: p.notes || [],
-      settings: p.settings || {
-        notifications: { gameUpdates: true, memberActivity: true, dailyDigest: false },
-        autoRefresh: { enabled: true, intervalHours: 24 },
-        defaultView: 'grid',
-      },
-      createdAt: p.created_at,
-      updatedAt: p.updated_at,
-      archivedAt: p.archived_at,
-      tags: p.tags,
-      color: p.color,
-    }));
+    // 타입 안전한 변환
+    const transformedProjects: Project[] = dbRowsToProjects(
+      (projectsData || []) as ProjectDbRow[]
+    );
 
     const result: ProjectListResponse = {
       projects: transformedProjects,
@@ -262,33 +243,12 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const project = projectResult as any;
-
-    // 캐시 무효화
-    const cachePattern = `projects:${user.id}:*`;
-    // Redis에서 패턴 매칭 삭제는 복잡하므로 개별 캐시 만료에 의존
+    // 타입 안전한 변환
+    const project = dbRowToProject(projectResult as ProjectDbRow);
 
     return NextResponse.json({
       success: true,
-      data: {
-        id: project.id,
-        name: project.name,
-        description: project.description,
-        type: project.type,
-        status: project.status,
-        visibility: project.visibility,
-        ownerId: project.owner_id,
-        ownerEmail: project.owner_email,
-        games: project.games,
-        members: project.members,
-        notes: project.notes,
-        settings: project.settings,
-        createdAt: project.created_at,
-        updatedAt: project.updated_at,
-        tags: project.tags,
-        color: project.color,
-      } as Project,
+      data: project,
     }, { status: 201 });
 
   } catch (error) {

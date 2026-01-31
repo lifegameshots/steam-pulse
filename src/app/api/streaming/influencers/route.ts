@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 게임 관련 데이터 조회 (gameName이 있는 경우)
-    let streamerGameStats: Map<string, {
+    const streamerGameStats: Map<string, {
       totalStreams: number;
       avgViewers: number;
       peakViewers: number;

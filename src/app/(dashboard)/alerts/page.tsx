@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Bell, Plus, Settings, Filter, TrendingUp } from 'lucide-react';
 import { AlertDashboard } from '@/components/alerts/AlertDashboard';

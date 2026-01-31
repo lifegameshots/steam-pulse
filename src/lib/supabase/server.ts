@@ -1,6 +1,6 @@
 // 서버(Server Components, Route Handlers)용 Supabase 클라이언트
 
-import { createServerClient, type CookieOptions } from '@supabase/ssr';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import type { Database } from '@/types/database';
 

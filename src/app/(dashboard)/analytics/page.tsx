@@ -9,9 +9,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   BarChart3, TrendingUp, Activity, Map, Calendar,
-  ChevronRight, Clock, AlertCircle, CheckCircle2, Sparkles,
+  ChevronRight, Clock, CheckCircle2, Sparkles,
   Users, Target, Zap, Award, TrendingDown, Database, ExternalLink,
-  LineChart, RefreshCw
+  LineChart
 } from 'lucide-react';
 import { formatNumber } from '@/lib/utils/formatters';
 import { calculateRetention, type RetentionInput } from '@/lib/algorithms/retention';

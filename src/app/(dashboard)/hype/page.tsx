@@ -8,14 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
   Rocket,
   Users,
   Heart,
@@ -327,28 +319,31 @@ export default function HypePage() {
   const [expandedGame, setExpandedGame] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'hype' | 'wishlist' | 'change'>('hype');
 
+  // 게임 목록 (data 변경 시 재계산)
+  const gamesList = data?.games ?? [];
+
   // 통계 계산
   const stats = useMemo(() => {
-    if (!data?.games || data.games.length === 0) {
+    if (gamesList.length === 0) {
       return { count: 0, totalHype: 0, avgHype: 0, topHype: 0 };
     }
 
-    const totalHype = data.games.reduce((sum, g) => sum + g.hypeScore, 0);
-    const avgHype = Math.round(totalHype / data.games.length);
-    const topHype = Math.max(...data.games.map((g) => g.hypeScore));
+    const totalHype = gamesList.reduce((sum, g) => sum + g.hypeScore, 0);
+    const avgHype = Math.round(totalHype / gamesList.length);
+    const topHype = Math.max(...gamesList.map((g) => g.hypeScore));
 
     return {
-      count: data.games.length,
+      count: gamesList.length,
       totalHype,
       avgHype,
       topHype,
     };
-  }, [data?.games]);
+  }, [gamesList]);
 
   // 정렬된 게임 목록
   const sortedGames = useMemo(() => {
-    if (!data?.games) return [];
-    const games = [...data.games];
+    if (gamesList.length === 0) return [];
+    const games = [...gamesList];
     switch (sortBy) {
       case 'wishlist':
         return games.sort((a, b) => b.estimatedWishlists - a.estimatedWishlists);
@@ -357,7 +352,7 @@ export default function HypePage() {
       default:
         return games.sort((a, b) => b.hypeScore - a.hypeScore);
     }
-  }, [data?.games, sortBy]);
+  }, [gamesList, sortBy]);
 
   // Top 3 게임
   const topGames = useMemo(() => {

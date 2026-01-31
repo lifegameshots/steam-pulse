@@ -6,8 +6,6 @@ import type {
   CausationItem,
   CorrelationItem,
   GeminiInsightResponse,
-  InsightProjections,
-  InsightComparable,
 } from '@/types/insight';
 import {
   generateInsightId,

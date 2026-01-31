@@ -100,34 +100,6 @@ async function getAccessToken(): Promise<string> {
 }
 
 /**
- * Chzzk Open API 요청 헬퍼 (인증 필요)
- */
-async function chzzkAuthFetch<T>(endpoint: string, options?: RequestInit): Promise<T> {
-  const token = await getAccessToken();
-
-  const response = await fetchWithTimeout(`${CHZZK_OPEN_API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Chzzk API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-
-  if (data.code !== 200) {
-    throw new Error(`Chzzk API error: ${data.message}`);
-  }
-
-  return data.content;
-}
-
-/**
  * Chzzk 공개 API 요청 헬퍼 (인증 불필요)
  */
 async function chzzkFetch<T>(endpoint: string): Promise<T> {

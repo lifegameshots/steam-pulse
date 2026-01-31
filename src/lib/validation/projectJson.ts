@@ -398,3 +398,190 @@ export const PROJECT_ERROR_CODES = {
 } as const;
 
 export type ProjectErrorCode = typeof PROJECT_ERROR_CODES[keyof typeof PROJECT_ERROR_CODES];
+
+// ============================================
+// DB Row → Project 변환 함수
+// ============================================
+
+/**
+ * DB row 타입 (Supabase에서 가져온 projects 테이블 데이터)
+ */
+export interface ProjectDbRow {
+  id: string;
+  name: string;
+  description: string | null;
+  type: string;
+  status: string;
+  visibility: string;
+  owner_id: string;
+  owner_email: string | null;
+  games: unknown;
+  members: unknown;
+  notes: unknown;
+  settings: unknown;
+  created_at: string;
+  updated_at: string;
+  archived_at: string | null;
+  tags: string[] | null;
+  color: string | null;
+}
+
+/**
+ * 기본 프로젝트 설정
+ */
+const DEFAULT_SETTINGS: import('@/types/project').ProjectSettings = {
+  notifications: { gameUpdates: true, memberActivity: true, dailyDigest: false },
+  autoRefresh: { enabled: true, intervalHours: 24 },
+  defaultView: 'grid',
+};
+
+/**
+ * unknown 값이 ProjectSettings인지 검증
+ */
+function isProjectSettings(x: unknown): x is import('@/types/project').ProjectSettings {
+  if (typeof x !== 'object' || x === null) return false;
+
+  const obj = x as Record<string, unknown>;
+
+  // notifications 검증
+  if (typeof obj.notifications !== 'object' || obj.notifications === null) return false;
+  const notif = obj.notifications as Record<string, unknown>;
+  if (typeof notif.gameUpdates !== 'boolean') return false;
+  if (typeof notif.memberActivity !== 'boolean') return false;
+  if (typeof notif.dailyDigest !== 'boolean') return false;
+
+  // autoRefresh 검증
+  if (typeof obj.autoRefresh !== 'object' || obj.autoRefresh === null) return false;
+  const autoRef = obj.autoRefresh as Record<string, unknown>;
+  if (typeof autoRef.enabled !== 'boolean') return false;
+  if (typeof autoRef.intervalHours !== 'number') return false;
+
+  // defaultView 검증
+  if (obj.defaultView !== 'grid' && obj.defaultView !== 'list' && obj.defaultView !== 'table') return false;
+
+  return true;
+}
+
+/**
+ * unknown 값이 ProjectNote인지 검증
+ */
+function isProjectNote(x: unknown): x is import('@/types/project').ProjectNote {
+  if (typeof x !== 'object' || x === null) return false;
+
+  const obj = x as Record<string, unknown>;
+
+  return (
+    typeof obj.id === 'string' &&
+    typeof obj.content === 'string' &&
+    typeof obj.createdAt === 'string' &&
+    typeof obj.createdBy === 'string'
+  );
+}
+
+/**
+ * notes 필드를 안전하게 파싱
+ */
+export function parseProjectNotes(
+  input: unknown,
+  projectId?: string
+): ParseResult<import('@/types/project').ProjectNote> {
+  const issues: string[] = [];
+  let repaired = false;
+
+  if (input === null || input === undefined) {
+    return { data: [], repaired: false, issues: [] };
+  }
+
+  if (!Array.isArray(input)) {
+    issues.push(`Expected array but got ${typeof input}`);
+    if (projectId) {
+      console.warn(`[Project:${projectId}] Data integrity issue in 'notes' field:`, issues.join('; '));
+    }
+    return { data: [], repaired: true, issues };
+  }
+
+  const validNotes: import('@/types/project').ProjectNote[] = [];
+
+  for (let i = 0; i < input.length; i++) {
+    const item = input[i];
+    if (isProjectNote(item)) {
+      validNotes.push(item);
+    } else {
+      issues.push(`Invalid note at index ${i}`);
+      repaired = true;
+    }
+  }
+
+  return { data: validNotes, repaired, issues };
+}
+
+/**
+ * settings 필드를 안전하게 파싱
+ */
+export function parseProjectSettings(
+  input: unknown
+): import('@/types/project').ProjectSettings {
+  if (isProjectSettings(input)) {
+    return input;
+  }
+  return DEFAULT_SETTINGS;
+}
+
+/**
+ * 유효한 ProjectType인지 검증
+ */
+function isValidProjectType(t: string): t is import('@/types/project').ProjectType {
+  return ['competitive_analysis', 'market_research', 'game_benchmark', 'trend_tracking', 'launch_planning', 'custom'].includes(t);
+}
+
+/**
+ * 유효한 ProjectStatus인지 검증
+ */
+function isValidProjectStatus(s: string): s is import('@/types/project').ProjectStatus {
+  return ['active', 'archived', 'completed', 'draft'].includes(s);
+}
+
+/**
+ * 유효한 ProjectVisibility인지 검증
+ */
+function isValidProjectVisibility(v: string): v is import('@/types/project').ProjectVisibility {
+  return ['private', 'team', 'public'].includes(v);
+}
+
+/**
+ * DB row를 Project 도메인 타입으로 변환
+ * 타입 안전하게 변환하며, 유효하지 않은 데이터는 기본값으로 대체
+ */
+export function dbRowToProject(row: ProjectDbRow): import('@/types/project').Project {
+  const { data: games } = parseProjectGames(row.games, row.id);
+  const { data: members } = parseProjectMembers(row.members, row.id);
+  const { data: notes } = parseProjectNotes(row.notes, row.id);
+  const settings = parseProjectSettings(row.settings);
+
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description ?? undefined,
+    type: isValidProjectType(row.type) ? row.type : 'custom',
+    status: isValidProjectStatus(row.status) ? row.status : 'active',
+    visibility: isValidProjectVisibility(row.visibility) ? row.visibility : 'private',
+    ownerId: row.owner_id,
+    ownerEmail: row.owner_email ?? '',
+    games,
+    members,
+    notes,
+    settings,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    archivedAt: row.archived_at ?? undefined,
+    tags: row.tags ?? undefined,
+    color: row.color ?? undefined,
+  };
+}
+
+/**
+ * DB row 배열을 Project 배열로 변환
+ */
+export function dbRowsToProjects(rows: ProjectDbRow[]): import('@/types/project').Project[] {
+  return rows.map(dbRowToProject);
+}

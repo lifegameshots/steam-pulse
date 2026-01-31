@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { AlertCircle, RefreshCw, Search, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -102,10 +103,10 @@ export default function GameDetailError({ error, reset }: ErrorProps) {
               </Button>
               {errorInfo.showSearch && (
                 <Button variant="outline" asChild className="flex-1">
-                  <a href="/">
+                  <Link href="/">
                     <Search className="mr-2 h-4 w-4" />
                     게임 검색
-                  </a>
+                  </Link>
                 </Button>
               )}
             </div>

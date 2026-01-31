@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { AlertCircle, RefreshCw, Home, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -98,7 +99,7 @@ export default function DashboardError({ error, reset }: ErrorProps) {
             )}
             {errorInfo.showLogin && (
               <Button asChild className="w-full">
-                <a href="/login">로그인 페이지로 이동</a>
+                <Link href="/login">로그인 페이지로 이동</Link>
               </Button>
             )}
             <div className="flex gap-2">
@@ -107,10 +108,10 @@ export default function DashboardError({ error, reset }: ErrorProps) {
                 뒤로 가기
               </Button>
               <Button variant="outline" asChild className="flex-1">
-                <a href="/">
+                <Link href="/">
                   <Home className="mr-2 h-4 w-4" />
                   홈으로
-                </a>
+                </Link>
               </Button>
             </div>
           </div>

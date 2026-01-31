@@ -143,16 +143,19 @@ export default function CompetitorsPage() {
     setSearchQuery(publisher);
   };
 
+  // 게임 목록 (publisherData 변경 시 재계산)
+  const games = publisherData?.games ?? [];
+
   // 게임 목록 정렬 (리뷰 수 기준)
   const sortedGames = useMemo(() => {
-    if (!publisherData?.games) return [];
-    return [...publisherData.games].sort((a, b) => b.reviews.total - a.reviews.total);
-  }, [publisherData?.games]);
+    if (games.length === 0) return [];
+    return [...games].sort((a, b) => b.reviews.total - a.reviews.total);
+  }, [games]);
 
   // 가격대별 분포
   const priceDistribution = useMemo(() => {
-    if (!publisherData?.games) return { free: 0, budget: 0, standard: 0, premium: 0 };
-    return publisherData.games.reduce(
+    if (games.length === 0) return { free: 0, budget: 0, standard: 0, premium: 0 };
+    return games.reduce(
       (acc, game) => {
         if (game.price === 0) acc.free++;
         else if (game.price < 10) acc.budget++;
@@ -162,7 +165,7 @@ export default function CompetitorsPage() {
       },
       { free: 0, budget: 0, standard: 0, premium: 0 }
     );
-  }, [publisherData?.games]);
+  }, [games]);
 
   return (
     <div className="space-y-8">

@@ -25,7 +25,7 @@ import { GameStreamingPanel } from '@/components/streaming/GameStreamingPanel';
 import { IGDBEnrichmentPanel } from '@/components/igdb/IGDBEnrichmentPanel';
 import { SimilarGamesPanel } from '@/components/igdb/SimilarGamesPanel';
 import Link from 'next/link';
-import { Radio, Sparkles } from 'lucide-react';
+import { Radio } from 'lucide-react';
 
 // 뉴스 아이템 타입
 interface NewsItem {
@@ -162,6 +162,7 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
   const { data: newsData, isLoading: loadingNews } = useGameNews(appId);
 
   // CCU 데이터 - 현재 값 기반으로 24시간 모의 히스토리 생성
+  // 결정론적 시드 기반 pseudo-random으로 React Compiler 호환
   const ccuData = useMemo(() => {
     if (!game?.currentPlayers && !game?.steamSpy?.ccu) return [];
 
@@ -169,32 +170,41 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
     const now = new Date();
     const data: { time: string; ccu: number }[] = [];
 
+    // 간단한 시드 기반 pseudo-random 함수 (결정론적)
+    const seededRandom = (seed: number) => {
+      const x = Math.sin(seed) * 10000;
+      return x - Math.floor(x);
+    };
+
     // 24시간 히스토리 (2시간 간격, 12개 포인트)
     for (let i = 11; i >= 0; i--) {
       const time = new Date(now.getTime() - i * 2 * 60 * 60 * 1000);
       // 시간대별 변동 시뮬레이션 (실제 패턴 모사)
       const hour = time.getHours();
       let multiplier = 1;
+      // 시드: appId + 시간 인덱스 조합으로 일관된 값 생성
+      const seed = parseInt(appId, 10) + i * 100 + hour;
+      const randomFactor = seededRandom(seed);
 
       // 새벽 (2-8시): 낮음
       if (hour >= 2 && hour < 8) {
-        multiplier = 0.3 + Math.random() * 0.2;
+        multiplier = 0.3 + randomFactor * 0.2;
       }
       // 오전 (8-12시): 중간
       else if (hour >= 8 && hour < 12) {
-        multiplier = 0.5 + Math.random() * 0.2;
+        multiplier = 0.5 + randomFactor * 0.2;
       }
       // 오후 (12-18시): 보통
       else if (hour >= 12 && hour < 18) {
-        multiplier = 0.7 + Math.random() * 0.2;
+        multiplier = 0.7 + randomFactor * 0.2;
       }
       // 저녁 피크 (18-24시): 높음
       else if (hour >= 18) {
-        multiplier = 0.9 + Math.random() * 0.2;
+        multiplier = 0.9 + randomFactor * 0.2;
       }
       // 심야 (0-2시): 중상
       else {
-        multiplier = 0.75 + Math.random() * 0.15;
+        multiplier = 0.75 + randomFactor * 0.15;
       }
 
       const ccu = Math.round(currentCCU * multiplier);
@@ -211,7 +221,7 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
     });
 
     return data;
-  }, [game]);
+  }, [game, appId]);
 
   // 태그 (SteamSpy 태그 + 투표수, 없으면 장르)
   const displayTags = useMemo(() => {
@@ -276,23 +286,6 @@ export default function GamePage({ params }: { params: Promise<{ appId: string }
   }
 
   const positiveRatio = game.reviews?.positivePercent || 0;
-
-  // 게임 데이터 객체 (하위 컴포넌트에 전달)
-  const gameData = {
-    appId,
-    name: game.name,
-    headerImage: game.headerImage,
-    description: game.shortDescription || game.description || '',
-    tags: displayTags.map(t => t.name),
-    genres: game.genres?.map(g => typeof g === 'string' ? g : g.description) || [],
-    developers: game.developers || [],
-    publishers: game.publishers || [],
-    releaseDate: game.releaseDate?.date || '',
-    price: game.price,
-    reviews: game.reviews,
-    currentPlayers: currentCCU,
-    steamSpy: game.steamSpy,
-  };
 
   return (
     <div className="space-y-4 sm:space-y-6">

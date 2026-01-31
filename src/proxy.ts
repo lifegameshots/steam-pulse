@@ -1,4 +1,4 @@
-// Next.js 미들웨어 - 인증 체크 및 세션 갱신
+// Next.js 16 Proxy - 인증 체크 및 세션 갱신
 
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
@@ -13,7 +13,7 @@ const publicPaths = [
   '/trending',  // 트렌딩 페이지
 ];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   });

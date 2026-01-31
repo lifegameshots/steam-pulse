@@ -180,11 +180,14 @@ export async function getTopGames() {
     );
     if (!response.ok) return null;
     const data = await response.json();
-    return Object.entries(data).slice(0, 20).map(([appid, info]: [string, any]) => ({
-      appid: parseInt(appid),
-      name: info.name,
-      current_players: info.ccu || 0,
-    }));
+    return Object.entries(data).slice(0, 20).map(([appid, info]) => {
+      const gameInfo = info as { name?: string; ccu?: number };
+      return {
+        appid: parseInt(appid),
+        name: gameInfo.name ?? '',
+        current_players: gameInfo.ccu ?? 0,
+      };
+    });
   } catch (error) {
     console.error('SteamSpy API Error:', error);
     return null;

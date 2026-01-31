@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -17,22 +16,16 @@ import {
 import {
   Scale,
   Search,
-  ArrowRight,
   X,
   Plus,
   Play,
   Trophy,
-  TrendingUp,
-  TrendingDown,
-  Minus,
   BarChart3,
   RefreshCw,
   HelpCircle,
   Info,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { useDebounce } from '@/hooks/useDebounce';
-import { formatNumber } from '@/lib/utils/formatters';
 import {
   SYSTEM_TEMPLATES,
   GRADE_COLORS,
@@ -53,7 +46,6 @@ import {
   YAxis,
   Tooltip,
   Legend,
-  Cell,
 } from 'recharts';
 
 interface SearchResult {
@@ -79,8 +71,6 @@ export default function BenchmarkPage() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [selectedGames, setSelectedGames] = useState<SearchResult[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('system_0');
-
-  const debouncedQuery = useDebounce(searchQuery, 300);
 
   // 템플릿 목록
   const templates = SYSTEM_TEMPLATES.map((t, i) => ({
@@ -113,7 +103,6 @@ export default function BenchmarkPage() {
   const {
     data: benchmarkData,
     isLoading: isBenchmarking,
-    error: benchmarkError,
     refetch: runBenchmark,
   } = useQuery<{ success: boolean; data: BenchmarkData }>({
     queryKey: ['benchmark', selectedGames.map(g => g.appId), selectedTemplateId],

@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import type { Project } from '@/types/project';
+import { dbRowToProject, parseProjectMembers, type ProjectDbRow } from '@/lib/validation/projectJson';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -44,9 +45,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // 권한 확인 (소유자이거나 멤버인 경우만)
     const isOwner = projectData.owner_id === user.id;
-    const isMember = (projectData.members as { userId: string }[])?.some(
-      (m) => m.userId === user.id
-    );
+    const { data: parsedMembers } = parseProjectMembers(projectData.members, id);
+    const isMember = parsedMembers.some((m) => m.userId === user.id);
 
     if (!isOwner && !isMember) {
       return NextResponse.json({
@@ -55,32 +55,8 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }, { status: 403 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const p = projectData as any;
-
-    const project: Project = {
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      type: p.type,
-      status: p.status,
-      visibility: p.visibility,
-      ownerId: p.owner_id,
-      ownerEmail: p.owner_email,
-      games: p.games || [],
-      members: p.members || [],
-      notes: p.notes || [],
-      settings: p.settings || {
-        notifications: { gameUpdates: true, memberActivity: true, dailyDigest: false },
-        autoRefresh: { enabled: true, intervalHours: 24 },
-        defaultView: 'grid',
-      },
-      createdAt: p.created_at,
-      updatedAt: p.updated_at,
-      archivedAt: p.archived_at,
-      tags: p.tags,
-      color: p.color,
-    };
+    // 타입 안전한 변환
+    const project: Project = dbRowToProject(projectData as ProjectDbRow);
 
     return NextResponse.json({ success: true, data: project });
 
@@ -128,7 +104,8 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // 소유자 또는 editor만 수정 가능
     const isOwner = existing.owner_id === user.id;
-    const isEditor = (existing.members as { userId: string; role: string }[])?.some(
+    const { data: existingMembers } = parseProjectMembers(existing.members);
+    const isEditor = existingMembers.some(
       (m) => m.userId === user.id && (m.role === 'owner' || m.role === 'editor')
     );
 
