@@ -154,6 +154,8 @@ export async function GET(request: NextRequest) {
     const avgViewersMap = new Map<string, number[]>();
 
     recentActivity?.forEach(activity => {
+      if (!activity.streamer_id) return;
+
       const games = recentGamesMap.get(activity.streamer_id) || [];
       if (!games.includes(activity.game_name)) {
         games.push(activity.game_name);
