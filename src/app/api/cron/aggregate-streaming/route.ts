@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
     // 1. PostgreSQL 함수로 일별 집계 실행
     const { data: aggregateResult, error: aggregateError } = await supabase
-      .rpc('aggregate_streaming_daily_stats', { p_date: targetDate });
+      .rpc('aggregate_streaming_daily_stats', { p_date: targetDate } as { p_date?: string });
 
     if (aggregateError) {
       console.error('[Cron] Aggregate function error:', aggregateError);
