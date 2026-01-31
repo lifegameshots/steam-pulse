@@ -126,12 +126,14 @@ export async function GET(request: NextRequest) {
 
       if (gameStats) {
         (gameStats as StreamerGame[]).forEach(gs => {
-          streamerGameStats.set(gs.streamer_id, {
-            totalStreams: gs.total_streams,
-            avgViewers: gs.avg_viewers,
-            peakViewers: gs.peak_viewers,
-            lastStreamedAt: gs.last_streamed_at,
-          });
+          if (gs.streamer_id) {
+            streamerGameStats.set(gs.streamer_id, {
+              totalStreams: gs.total_streams,
+              avgViewers: gs.avg_viewers,
+              peakViewers: gs.peak_viewers,
+              lastStreamedAt: gs.last_streamed_at,
+            });
+          }
         });
       }
     }
