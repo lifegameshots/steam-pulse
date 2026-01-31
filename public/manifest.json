@@ -1,0 +1,27 @@
+{
+  "name": "SteamPulse - Steam Market Intelligence",
+  "short_name": "SteamPulse",
+  "description": "데이터가 만드는 게임 비즈니스의 미래 - Steam 시장 인텔리전스 대시보드",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0A",
+  "theme_color": "#0A0A0A",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "business", "utilities"],
+  "lang": "ko",
+  "dir": "ltr"
+}
