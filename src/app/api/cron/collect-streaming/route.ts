@@ -13,8 +13,7 @@ import { standardizeGameName } from '@/lib/streaming/gameNameMatcher';
 import type { Database } from '@/types/database';
 
 // Supabase 클라이언트 (서비스 롤)
-// Note: 타입 체크 비활성화 - Supabase 타입 추론 이슈로 인해 any 사용
-const supabase: any = createClient(
+const supabase = createClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
