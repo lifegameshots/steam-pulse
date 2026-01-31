@@ -227,23 +227,23 @@ export function PlayerDNAPanel({
       <CardContent>
         {/* 요약 정보 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">주요 유저층</p>
-            <p className="text-lg font-bold text-purple-600">
+          <div className="bg-purple-500/20 border border-purple-500/30 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-400 mb-1">주요 유저층</p>
+            <p className="text-lg font-bold text-purple-400">
               {primaryInfo.icon} {primaryInfo.name}
             </p>
           </div>
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">분석 리뷰</p>
-            <p className="text-lg font-bold">{result.reviewsAnalyzed}</p>
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-400 mb-1">분석 리뷰</p>
+            <p className="text-lg font-bold text-white">{result.reviewsAnalyzed}</p>
           </div>
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">평균 플레이</p>
-            <p className="text-lg font-bold">{result.avgPlaytimeHours}h</p>
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-400 mb-1">평균 플레이</p>
+            <p className="text-lg font-bold text-white">{result.avgPlaytimeHours}h</p>
           </div>
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">코어 비율</p>
-            <p className="text-lg font-bold">{Math.round(result.distribution.core * 100)}%</p>
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-400 mb-1">코어 비율</p>
+            <p className="text-lg font-bold text-white">{Math.round(result.distribution.core * 100)}%</p>
           </div>
         </div>
 
@@ -297,9 +297,9 @@ export function PlayerDNAPanel({
                 icon={<Users className="h-5 w-5" />}
               />
             ) : (
-              <Card className="border-gray-200">
-                <CardContent className="py-8 text-center text-gray-500">
-                  <Users className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+              <Card className="border-slate-700 bg-slate-800/50">
+                <CardContent className="py-8 text-center text-slate-400">
+                  <Users className="h-10 w-10 mx-auto mb-3 text-slate-500" />
                   <p>AI 인사이트를 생성하려면 새로고침을 클릭하세요</p>
                 </CardContent>
               </Card>

@@ -231,15 +231,15 @@ export function DesignAnalysisPanel({
                       key={type}
                       className={`p-3 rounded-lg border ${
                         score >= 70
-                          ? 'bg-green-50 border-green-200 dark:bg-green-950/30 dark:border-green-800'
+                          ? 'bg-green-500/20 border-green-500/30'
                           : score >= 50
-                          ? 'bg-gray-50 border-gray-200 dark:bg-gray-800 dark:border-gray-700'
-                          : 'bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-800'
+                          ? 'bg-slate-800 border-slate-700'
+                          : 'bg-red-500/20 border-red-500/30'
                       }`}
                     >
-                      <p className="text-xs text-gray-500 capitalize">{type}</p>
+                      <p className="text-xs text-slate-400 capitalize">{type}</p>
                       <p className={`text-xl font-bold ${
-                        score >= 70 ? 'text-green-600' : score >= 50 ? 'text-gray-700' : 'text-red-600'
+                        score >= 70 ? 'text-green-400' : score >= 50 ? 'text-white' : 'text-red-400'
                       }`}>
                         {score}
                       </p>

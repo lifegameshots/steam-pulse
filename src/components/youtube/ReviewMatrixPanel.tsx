@@ -297,26 +297,30 @@ function OverviewTab({
       {/* 감정 분석 */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">감정 분석</CardTitle>
+          <CardTitle className="text-base text-white">감정 분석</CardTitle>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
+          <ResponsiveContainer width="100%" height={240}>
+            <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
               <Pie
                 data={sentimentData}
                 cx="50%"
                 cy="50%"
-                innerRadius={50}
-                outerRadius={80}
+                innerRadius={40}
+                outerRadius={70}
                 paddingAngle={2}
                 dataKey="value"
                 label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                labelLine={{ stroke: '#94a3b8', strokeWidth: 1 }}
               >
                 {sentimentData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={entry.fill} />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip
+                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #475569', borderRadius: '8px' }}
+                labelStyle={{ color: '#fff' }}
+              />
             </PieChart>
           </ResponsiveContainer>
         </CardContent>

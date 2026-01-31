@@ -42,6 +42,7 @@ export default function ProjectsPage() {
           title="프로젝트 관리 사용 가이드"
           description="여러 게임을 프로젝트로 묶어 효율적으로 분석하세요"
           steps={projectGuideSteps}
+          showOnFirstVisit={false}
         />
       </div>
       <ProjectList />

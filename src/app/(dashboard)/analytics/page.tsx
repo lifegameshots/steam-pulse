@@ -860,9 +860,9 @@ export default function AnalyticsPage() {
 
           {/* 다가오는 이벤트 */}
           {upcomingEvents.length > 0 && (
-            <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
+            <Card className="bg-blue-500/10 border-blue-500/30">
               <CardHeader className="px-4 sm:px-6 pb-2">
-                <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-blue-700 dark:text-blue-300">
+                <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-blue-400">
                   <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
                   60일 내 이벤트
                 </CardTitle>
@@ -872,10 +872,10 @@ export default function AnalyticsPage() {
                   {upcomingEvents.slice(0, 5).map((event) => {
                     const daysLeft = getDaysUntilEvent(event);
                     return (
-                      <div key={event.id} className="flex items-center gap-2 p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                        {getEventTypeIcon(event.type)}
-                        <span className="font-medium text-sm flex-1 truncate">{event.nameKr}</span>
-                        <Badge variant="outline" className="text-xs">
+                      <div key={event.id} className="flex items-center gap-2 p-2 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                        <span className="text-blue-400">{getEventTypeIcon(event.type)}</span>
+                        <span className="font-medium text-sm flex-1 truncate text-slate-200">{event.nameKr}</span>
+                        <Badge variant="outline" className="text-xs border-slate-600 text-slate-300">
                           D-{daysLeft}
                         </Badge>
                         <Badge className={getImpactBadge(event.impact).className}>

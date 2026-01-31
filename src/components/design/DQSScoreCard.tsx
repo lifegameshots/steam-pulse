@@ -47,8 +47,8 @@ function GameFeelBars({ scores }: { scores: GameFeelScores }) {
 
         return (
           <div key={type} className="flex items-center gap-2">
-            <span className="text-xs text-gray-500 w-16 shrink-0">{label.name}</span>
-            <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+            <span className="text-xs text-slate-400 w-16 shrink-0">{label.name}</span>
+            <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
               <div
                 className={`h-full rounded-full transition-all ${getProgressColor(score)}`}
                 style={{ width: `${score}%` }}
@@ -108,11 +108,11 @@ export function DQSScoreCard({
               </div>
             </div>
             {/* 등급 배지 */}
-            <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-sm font-bold ${
-              dqs >= 80 ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
-              dqs >= 60 ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
-              dqs >= 40 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300' :
-              'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+            <div className={`absolute -bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap ${
+              dqs >= 80 ? 'bg-green-500/20 text-green-400 border border-green-500/50' :
+              dqs >= 60 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50' :
+              dqs >= 40 ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50' :
+              'bg-red-500/20 text-red-400 border border-red-500/50'
             }`}>
               {dqsGrade.emoji} {dqsGrade.grade} ({dqsGrade.label})
             </div>
@@ -122,7 +122,7 @@ export function DQSScoreCard({
           <div className="space-y-3">
             {/* Game Feel 점수 */}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Game Feel:</span>
+              <span className="text-sm text-slate-400">Game Feel:</span>
               <span className={`font-bold ${getScoreColor(gameFeelOverall)}`}>
                 {gameFeelOverall}점
               </span>
@@ -131,7 +131,7 @@ export function DQSScoreCard({
             {/* 장르 적합도 */}
             {genreBenchmark && (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">장르 적합도:</span>
+                <span className="text-sm text-slate-400">장르 적합도:</span>
                 <span className={`font-bold ${getScoreColor(genreBenchmark.alignment)}`}>
                   {genreBenchmark.alignment}%
                 </span>
@@ -160,8 +160,8 @@ export function DQSScoreCard({
 
         {/* Game Feel 세부 점수 */}
         {!compact && (
-          <div className="pt-4 border-t">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+          <div className="pt-4 border-t border-slate-700">
+            <p className="text-sm font-medium text-slate-300 mb-3">
               🎮 Game Feel 상세
             </p>
             <GameFeelBars scores={result.gameFeelScores} />
@@ -170,15 +170,15 @@ export function DQSScoreCard({
 
         {/* 권고사항 */}
         {showRecommendations && recommendations.length > 0 && (
-          <div className="pt-4 border-t">
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1">
+          <div className="pt-4 border-t border-slate-700">
+            <p className="text-sm font-medium text-slate-300 mb-2 flex items-center gap-1">
               <AlertTriangle className="h-4 w-4 text-amber-500" />
               개선 권고사항
             </p>
             <ul className="space-y-2">
               {recommendations.slice(0, compact ? 2 : 4).map((rec, i) => (
-                <li key={i} className="text-sm text-gray-600 dark:text-gray-400 flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
+                <li key={i} className="text-sm text-slate-400 flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-slate-500 shrink-0 mt-0.5" />
                   <span dangerouslySetInnerHTML={{ __html: rec.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
                 </li>
               ))}

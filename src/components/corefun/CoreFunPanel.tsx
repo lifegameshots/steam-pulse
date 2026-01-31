@@ -271,37 +271,37 @@ export function CoreFunPanel({ appId, gameName, autoLoad = false }: CoreFunPanel
       <CardContent>
         {/* 요약 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-orange-50 dark:bg-orange-950/30 rounded-lg p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">전체 재미 점수</p>
-            <p className="text-2xl font-bold text-orange-600">{result.overallFunScore}</p>
+          <div className="bg-orange-500/20 border border-orange-500/30 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-400 mb-1">전체 재미 점수</p>
+            <p className="text-2xl font-bold text-orange-400">{result.overallFunScore}</p>
           </div>
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-center">
-            <p className="text-xs text-gray-500 mb-1">분석 리뷰</p>
-            <p className="text-lg font-bold">{result.reviewsAnalyzed}</p>
+          <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-400 mb-1">분석 리뷰</p>
+            <p className="text-lg font-bold text-white">{result.reviewsAnalyzed}</p>
           </div>
-          <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">핵심 재미</p>
-            <div className="flex flex-wrap gap-1">
+          <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-400 mb-1">핵심 재미</p>
+            <div className="flex flex-wrap gap-1 justify-center">
               {result.primaryFun.map(f => (
-                <Badge key={f} className="text-xs bg-green-100 text-green-700">
+                <Badge key={f} className="text-xs bg-green-500/30 text-green-300 border border-green-500/50">
                   {FUN_CATEGORY_INFO[f].icon} {FUN_CATEGORY_INFO[f].name}
                 </Badge>
               ))}
               {result.primaryFun.length === 0 && (
-                <span className="text-sm text-gray-400">데이터 부족</span>
+                <span className="text-sm text-slate-500">데이터 부족</span>
               )}
             </div>
           </div>
-          <div className="bg-red-50 dark:bg-red-950/30 rounded-lg p-3">
-            <p className="text-xs text-gray-500 mb-1">개선 필요</p>
-            <div className="flex flex-wrap gap-1">
+          <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3 text-center">
+            <p className="text-xs text-slate-400 mb-1">개선 필요</p>
+            <div className="flex flex-wrap gap-1 justify-center">
               {result.weaknesses.map(f => (
-                <Badge key={f} variant="outline" className="text-xs border-red-200 text-red-600">
+                <Badge key={f} variant="outline" className="text-xs border-red-500/50 text-red-400">
                   {FUN_CATEGORY_INFO[f].icon} {FUN_CATEGORY_INFO[f].name}
                 </Badge>
               ))}
               {result.weaknesses.length === 0 && (
-                <span className="text-sm text-gray-400">없음</span>
+                <span className="text-sm text-slate-500">없음</span>
               )}
             </div>
           </div>
@@ -392,9 +392,9 @@ export function CoreFunPanel({ appId, gameName, autoLoad = false }: CoreFunPanel
                 icon={<Gamepad2 className="h-5 w-5" />}
               />
             ) : (
-              <Card className="border-gray-200">
-                <CardContent className="py-8 text-center text-gray-500">
-                  <Gamepad2 className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+              <Card className="border-slate-700 bg-slate-800/50">
+                <CardContent className="py-8 text-center text-slate-400">
+                  <Gamepad2 className="h-10 w-10 mx-auto mb-3 text-slate-500" />
                   <p>AI 인사이트를 생성하려면 새로고침을 클릭하세요</p>
                 </CardContent>
               </Card>

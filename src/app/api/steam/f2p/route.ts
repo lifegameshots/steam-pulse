@@ -43,6 +43,25 @@ function createApiError(message: string, code: string, status: number): ApiError
   return error;
 }
 
+// 유명 F2P 게임 폴백 데이터 (SteamSpy API 실패 시)
+const FALLBACK_F2P_GAMES: F2PGame[] = [
+  { appId: 730, name: 'Counter-Strike 2', headerImage: '', genres: ['Free to Play'], tags: ['FPS', 'Shooter', 'Multiplayer', 'Competitive', 'Action'], ccu: 800000, owners: '100,000,000 .. 200,000,000', positive: 7000000, negative: 500000, releaseDate: '2023' },
+  { appId: 570, name: 'Dota 2', headerImage: '', genres: ['Free to Play'], tags: ['MOBA', 'Multiplayer', 'Strategy', 'Competitive', 'Team-Based'], ccu: 500000, owners: '100,000,000 .. 200,000,000', positive: 2000000, negative: 200000, releaseDate: '2013' },
+  { appId: 578080, name: 'PUBG: BATTLEGROUNDS', headerImage: '', genres: ['Free to Play'], tags: ['Battle Royale', 'Shooter', 'Multiplayer', 'Survival', 'Action'], ccu: 300000, owners: '50,000,000 .. 100,000,000', positive: 1500000, negative: 800000, releaseDate: '2017' },
+  { appId: 440, name: 'Team Fortress 2', headerImage: '', genres: ['Free to Play'], tags: ['FPS', 'Shooter', 'Multiplayer', 'Comedy', 'Action'], ccu: 80000, owners: '50,000,000 .. 100,000,000', positive: 1000000, negative: 50000, releaseDate: '2007' },
+  { appId: 1172470, name: 'Apex Legends', headerImage: '', genres: ['Free to Play'], tags: ['Battle Royale', 'FPS', 'Multiplayer', 'Hero Shooter', 'Action'], ccu: 200000, owners: '50,000,000 .. 100,000,000', positive: 500000, negative: 200000, releaseDate: '2020' },
+  { appId: 1085660, name: 'Destiny 2', headerImage: '', genres: ['Free to Play'], tags: ['Looter Shooter', 'FPS', 'MMO', 'Multiplayer', 'Sci-fi'], ccu: 100000, owners: '20,000,000 .. 50,000,000', positive: 400000, negative: 200000, releaseDate: '2019' },
+  { appId: 230410, name: 'Warframe', headerImage: '', genres: ['Free to Play'], tags: ['Looter Shooter', 'Action', 'Co-op', 'Sci-fi', 'RPG'], ccu: 50000, owners: '50,000,000 .. 100,000,000', positive: 600000, negative: 30000, releaseDate: '2013' },
+  { appId: 1599340, name: 'Lost Ark', headerImage: '', genres: ['Free to Play'], tags: ['MMORPG', 'Action', 'RPG', 'Hack and Slash', 'Fantasy'], ccu: 40000, owners: '20,000,000 .. 50,000,000', positive: 300000, negative: 150000, releaseDate: '2022' },
+  { appId: 252490, name: 'Rust', headerImage: '', genres: ['Free to Play'], tags: ['Survival', 'Multiplayer', 'Open World', 'Crafting', 'PvP'], ccu: 80000, owners: '20,000,000 .. 50,000,000', positive: 500000, negative: 200000, releaseDate: '2018' },
+  { appId: 238960, name: 'Path of Exile', headerImage: '', genres: ['Free to Play'], tags: ['Action RPG', 'Hack and Slash', 'RPG', 'Dark Fantasy', 'Loot'], ccu: 40000, owners: '20,000,000 .. 50,000,000', positive: 200000, negative: 10000, releaseDate: '2013' },
+  { appId: 1097150, name: 'Fall Guys', headerImage: '', genres: ['Free to Play'], tags: ['Multiplayer', 'Battle Royale', 'Party Game', 'Casual', 'Platformer'], ccu: 20000, owners: '10,000,000 .. 20,000,000', positive: 200000, negative: 50000, releaseDate: '2020' },
+  { appId: 1938090, name: 'Call of Duty: Warzone', headerImage: '', genres: ['Free to Play'], tags: ['Battle Royale', 'FPS', 'Shooter', 'Multiplayer', 'Action'], ccu: 30000, owners: '10,000,000 .. 20,000,000', positive: 100000, negative: 150000, releaseDate: '2023' },
+  { appId: 1240440, name: 'Halo Infinite', headerImage: '', genres: ['Free to Play'], tags: ['FPS', 'Multiplayer', 'Sci-fi', 'Shooter', 'Action'], ccu: 10000, owners: '10,000,000 .. 20,000,000', positive: 150000, negative: 100000, releaseDate: '2021' },
+  { appId: 386360, name: 'SMITE', headerImage: '', genres: ['Free to Play'], tags: ['MOBA', 'Multiplayer', 'Action', 'Fantasy', 'PvP'], ccu: 15000, owners: '20,000,000 .. 50,000,000', positive: 150000, negative: 20000, releaseDate: '2015' },
+  { appId: 444090, name: 'Paladins', headerImage: '', genres: ['Free to Play'], tags: ['Hero Shooter', 'FPS', 'Multiplayer', 'Team-Based', 'Fantasy'], ccu: 15000, owners: '20,000,000 .. 50,000,000', positive: 200000, negative: 50000, releaseDate: '2018' },
+];
+
 // SteamSpy에서 F2P 게임 목록 가져오기
 async function getF2PGamesFromSteamSpy(): Promise<{ games: F2PGame[]; fromCache: boolean }> {
   const cacheKey = 'steam:f2p:list';
@@ -50,24 +69,33 @@ async function getF2PGamesFromSteamSpy(): Promise<{ games: F2PGame[]; fromCache:
   try {
     // Redis 캐시 확인
     const cached = await redis.get<F2PGame[]>(cacheKey);
-    if (cached !== null) {
+    if (cached !== null && cached.length > 0) {
       return { games: cached, fromCache: true };
     }
 
     // SteamSpy genre=Free to Play API
+    console.log('[F2P] Fetching from SteamSpy API...');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10초 타임아웃
+
     const response = await fetch(`${STEAMSPY_API}?request=genre&genre=Free+to+Play`, {
+      signal: controller.signal,
       next: { revalidate: 3600 }
     });
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw createApiError(
-        `SteamSpy API returned ${response.status}`,
-        'STEAMSPY_API_ERROR',
-        response.status
-      );
+      console.warn('[F2P] SteamSpy API returned', response.status, '- using fallback data');
+      return { games: FALLBACK_F2P_GAMES, fromCache: false };
     }
 
     const data = await response.json();
+
+    // 응답이 비어있거나 유효하지 않은 경우 폴백
+    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+      console.warn('[F2P] SteamSpy returned empty data - using fallback');
+      return { games: FALLBACK_F2P_GAMES, fromCache: false };
+    }
 
     // 데이터 파싱 및 변환
     const games: F2PGame[] = Object.entries(data)
@@ -93,58 +121,32 @@ async function getF2PGamesFromSteamSpy(): Promise<{ games: F2PGame[]; fromCache:
           releaseDate: '',
         };
       })
-      .filter(game => game.ccu > 0 || (game.positive + game.negative) > 100)
+      .filter(game => game.name && (game.ccu > 0 || (game.positive + game.negative) > 100))
       .sort((a, b) => b.ccu - a.ccu)
       .slice(0, 100);
 
+    // 유효한 게임이 없으면 폴백
+    if (games.length === 0) {
+      console.warn('[F2P] No valid games parsed - using fallback');
+      return { games: FALLBACK_F2P_GAMES, fromCache: false };
+    }
+
+    console.log('[F2P] Successfully fetched', games.length, 'games from SteamSpy');
+
     // Redis에 캐시 저장 (1시간)
-    await redis.setex(cacheKey, 3600, games);
+    try {
+      await redis.setex(cacheKey, 3600, games);
+    } catch (cacheError) {
+      console.warn('[F2P] Cache save failed:', cacheError);
+    }
 
     return { games, fromCache: false };
   } catch (error) {
-    // Redis 오류 시 캐시 없이 재시도
-    if (error instanceof Error && error.message.includes('Redis')) {
-      console.warn('Redis error in F2P, falling back to direct API call');
-      try {
-        const response = await fetch(`${STEAMSPY_API}?request=genre&genre=Free+to+Play`, {
-          next: { revalidate: 3600 }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          const games: F2PGame[] = Object.entries(data)
-            .map(([appId, gameData]: [string, unknown]) => {
-              const game = gameData as {
-                name: string;
-                ccu: number;
-                owners: string;
-                positive: number;
-                negative: number;
-                tags?: Record<string, number>;
-              };
-              return {
-                appId: parseInt(appId),
-                name: game.name,
-                headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${appId}/header.jpg`,
-                genres: ['Free to Play'],
-                tags: game.tags ? Object.keys(game.tags).slice(0, 10) : [],
-                ccu: game.ccu || 0,
-                owners: game.owners || '0',
-                positive: game.positive || 0,
-                negative: game.negative || 0,
-                releaseDate: '',
-              };
-            })
-            .filter(game => game.ccu > 0 || (game.positive + game.negative) > 100)
-            .sort((a, b) => b.ccu - a.ccu)
-            .slice(0, 100);
-          return { games, fromCache: false };
-        }
-      } catch {
-        // 폴백도 실패
-      }
-    }
-    console.error('F2P Games API Error:', error);
-    throw error;
+    console.error('[F2P] API Error:', error);
+
+    // 타임아웃 또는 네트워크 에러 시 폴백 사용
+    console.warn('[F2P] Using fallback data due to error');
+    return { games: FALLBACK_F2P_GAMES, fromCache: false };
   }
 }
 

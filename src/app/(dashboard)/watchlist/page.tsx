@@ -281,12 +281,10 @@ export default function WatchlistPage() {
 
       {/* 하단 안내 */}
       {watchlist.length > 0 && (
-        <Card className="bg-muted/50">
+        <Card className="bg-slate-800/50 border-slate-700">
           <CardContent className="py-4">
-            <p className="text-sm text-muted-foreground text-center">
-              💡 <strong>팁:</strong> 알림 설정을 통해 CCU 급등, 가격 변동, 업데이트 소식을 받을 수 있습니다.
-              <br />
-              (알림 기능은 Phase 2에서 추가 예정)
+            <p className="text-sm text-slate-400 text-center">
+              관심 목록에 추가한 게임은 CCU, 가격 변동, 업데이트 현황을 편리하게 확인할 수 있습니다.
             </p>
           </CardContent>
         </Card>

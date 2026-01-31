@@ -410,3 +410,52 @@ export async function GET(request: NextRequest) {
 | Build-time env fixed | ✅ | See Section 8 |
 
 **QA Verdict: PASS**
+
+---
+
+## 11. UI/UX Bug Fix Session - 2026-01-31 (Evening)
+
+### Issues Fixed
+
+#### 11.1 P0: 404 - Project Settings Page
+**Problem:** `/projects/{id}/settings` returned 404
+**Solution:** Created `src/app/(dashboard)/projects/[id]/settings/page.tsx`
+
+#### 11.2 P1: FeatureGuideModal Auto-popup
+**Problem:** Modal appeared automatically on first visit
+**Solution:** Set `showOnFirstVisit={false}` in projects page
+
+#### 11.3 P1: UI Color Contrast Issues (Multiple Components)
+**Files Modified:**
+- `src/components/corefun/CoreFunPanel.tsx` - Summary boxes color fix
+- `src/components/persona/PlayerDNAPanel.tsx` - Summary boxes color fix
+- `src/app/(dashboard)/analytics/page.tsx` - 60일 이벤트 card color fix
+- `src/components/design/DQSScoreCard.tsx` - Badge overflow fix, text colors
+- `src/components/design/DesignAnalysisPanel.tsx` - MDA score colors
+
+#### 11.4 P1: YouTube Sentiment Chart Label Clipping
+**File Modified:** `src/components/youtube/ReviewMatrixPanel.tsx`
+**Change:** Increased chart height, added margins
+
+#### 11.5 P1: Watchlist Phase 2 Text
+**File Modified:** `src/app/(dashboard)/watchlist/page.tsx`
+**Change:** Replaced placeholder text with current feature description
+
+#### 11.6 Free To Play Page Not Working
+**File Modified:** `src/app/api/steam/f2p/route.ts`
+**Change:** Added fallback F2P game data for when SteamSpy API fails
+
+### Files Changed This Session
+
+| File | Change Type |
+|------|-------------|
+| `src/app/(dashboard)/projects/[id]/settings/page.tsx` | Created |
+| `src/app/(dashboard)/projects/page.tsx` | Modified |
+| `src/components/corefun/CoreFunPanel.tsx` | Modified |
+| `src/components/persona/PlayerDNAPanel.tsx` | Modified |
+| `src/app/(dashboard)/analytics/page.tsx` | Modified |
+| `src/components/design/DQSScoreCard.tsx` | Modified |
+| `src/components/design/DesignAnalysisPanel.tsx` | Modified |
+| `src/components/youtube/ReviewMatrixPanel.tsx` | Modified |
+| `src/app/(dashboard)/watchlist/page.tsx` | Modified |
+| `src/app/api/steam/f2p/route.ts` | Modified |
