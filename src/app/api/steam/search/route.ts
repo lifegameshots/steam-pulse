@@ -23,9 +23,17 @@ export async function GET(request: Request) {
       );
     }
 
+    // 프론트엔드 형식에 맞게 변환 (id → appId, tiny_image → headerImage)
+    const normalizedItems = results.items.map((item: any) => ({
+      appId: item.id,
+      name: item.name,
+      headerImage: item.tiny_image?.replace('231x87', '460x215') || `https://cdn.akamai.steamstatic.com/steam/apps/${item.id}/header.jpg`,
+      price: item.price ? `$${(item.price / 100).toFixed(2)}` : 'Free',
+    }));
+
     return NextResponse.json({
       total: results.total,
-      items: results.items,
+      items: normalizedItems,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
