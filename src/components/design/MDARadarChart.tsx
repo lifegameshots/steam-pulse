@@ -69,20 +69,20 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
   const label = MDA_LABELS[data.type];
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border p-3 max-w-xs">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border p-3 max-w-xs text-slate-900 dark:text-slate-100">
       <div className="flex items-center gap-2 mb-1">
         <span className="text-lg">{label.icon}</span>
         <span className="font-medium">{data.name}</span>
-        <span className="text-gray-400 text-sm">({label.nameEn})</span>
+        <span className="text-slate-400 dark:text-slate-500 text-sm">({label.nameEn})</span>
       </div>
-      <p className="text-sm text-gray-500 mb-2">{label.description}</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{label.description}</p>
       <div className="flex items-center gap-4">
         <div>
-          <span className="text-indigo-600 font-bold text-lg">{data.score}</span>
-          <span className="text-gray-400 text-sm">/100</span>
+          <span className="text-indigo-600 dark:text-indigo-400 font-bold text-lg">{data.score}</span>
+          <span className="text-slate-400 dark:text-slate-500 text-sm">/100</span>
         </div>
         {data.benchmark !== undefined && (
-          <div className="text-gray-500 text-sm">
+          <div className="text-slate-500 dark:text-slate-400 text-sm">
             벤치마크: <span className="font-medium">{data.benchmark}</span>
           </div>
         )}

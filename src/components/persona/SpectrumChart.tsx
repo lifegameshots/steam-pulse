@@ -33,13 +33,13 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
   if (!tier) return null;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border p-3 max-w-xs">
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border p-3 max-w-xs text-slate-900 dark:text-slate-100">
       <div className="flex items-center gap-2 mb-1">
         <span className="text-lg">{tier.icon}</span>
         <span className="font-medium">{tier.name}</span>
-        <span className="text-gray-400 text-sm">({tier.nameEn})</span>
+        <span className="text-slate-400 dark:text-slate-500 text-sm">({tier.nameEn})</span>
       </div>
-      <p className="text-sm text-gray-500 mb-2">{tier.description}</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-2">{tier.description}</p>
       <div className="text-lg font-bold" style={{ color: data.payload.fill }}>
         {data.value}%
       </div>

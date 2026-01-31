@@ -713,7 +713,7 @@ export default function HypePage() {
                         </div>
 
                         {/* Hype 등급 분석 */}
-                        <div className={`p-3 rounded-lg border ${
+                        <div className={`p-3 rounded-lg border text-slate-900 dark:text-slate-100 ${
                           hypeInfo.grade === 'S' || hypeInfo.grade === 'A'
                             ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800'
                             : hypeInfo.grade === 'B'
@@ -721,7 +721,7 @@ export default function HypePage() {
                               : 'bg-gray-50 dark:bg-gray-950/30 border-gray-200 dark:border-gray-800'
                         }`}>
                           <p className="text-sm font-medium mb-1">Hype 등급: {hypeInfo.grade} ({hypeInfo.label})</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
                             {hypeInfo.grade === 'S' && '초대형 기대작입니다. 출시 시 대규모 판매가 예상되며 시장에 큰 영향을 미칠 것입니다.'}
                             {hypeInfo.grade === 'A' && '높은 기대를 받는 게임입니다. 출시 첫 주 상당한 판매량이 예상됩니다.'}
                             {hypeInfo.grade === 'B' && '보통 수준의 기대도입니다. 타겟 유저층에서 안정적인 판매가 예상됩니다.'}
@@ -781,25 +781,25 @@ export default function HypePage() {
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-900/30">
-              <p className="text-2xl font-bold text-gray-600">10K</p>
-              <p className="text-sm text-muted-foreground">첫 주 ~2,000 판매</p>
-              <p className="text-xs text-muted-foreground mt-1">신규 인디 게임 평균</p>
+            <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-900/30 text-slate-900 dark:text-slate-100">
+              <p className="text-2xl font-bold text-gray-700 dark:text-gray-300">10K</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">첫 주 ~2,000 판매</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">신규 인디 게임 평균</p>
             </div>
-            <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/30">
-              <p className="text-2xl font-bold text-yellow-600">100K</p>
-              <p className="text-sm text-muted-foreground">첫 주 ~20,000 판매</p>
-              <p className="text-xs text-muted-foreground mt-1">인디 히트작 기준</p>
+            <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/30 text-slate-900 dark:text-slate-100">
+              <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-400">100K</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">첫 주 ~20,000 판매</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">인디 히트작 기준</p>
             </div>
-            <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-900/30">
-              <p className="text-2xl font-bold text-orange-600">500K</p>
-              <p className="text-sm text-muted-foreground">첫 주 ~100,000 판매</p>
-              <p className="text-xs text-muted-foreground mt-1">대형 히트작 기준</p>
+            <div className="p-4 rounded-lg bg-orange-50 dark:bg-orange-900/30 text-slate-900 dark:text-slate-100">
+              <p className="text-2xl font-bold text-orange-700 dark:text-orange-400">500K</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">첫 주 ~100,000 판매</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">대형 히트작 기준</p>
             </div>
-            <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/30">
-              <p className="text-2xl font-bold text-red-600">1M+</p>
-              <p className="text-sm text-muted-foreground">첫 주 ~200,000+ 판매</p>
-              <p className="text-xs text-muted-foreground mt-1">메가 히트작 (AAA급)</p>
+            <div className="p-4 rounded-lg bg-red-50 dark:bg-red-900/30 text-slate-900 dark:text-slate-100">
+              <p className="text-2xl font-bold text-red-700 dark:text-red-400">1M+</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">첫 주 ~200,000+ 판매</p>
+              <p className="text-xs text-slate-500 dark:text-slate-500 mt-1">메가 히트작 (AAA급)</p>
             </div>
           </div>
         </CardContent>

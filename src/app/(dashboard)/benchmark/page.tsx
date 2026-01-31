@@ -348,22 +348,22 @@ export default function BenchmarkPage() {
             <CardContent>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {summary?.winner && (
-                  <div className="p-3 bg-white dark:bg-gray-800 rounded-lg">
-                    <p className="text-xs text-muted-foreground mb-1">1위</p>
+                  <div className="p-3 bg-white dark:bg-gray-800 rounded-lg text-slate-900 dark:text-slate-100">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">1위</p>
                     <p className="font-bold truncate">{summary.winner.name}</p>
-                    <p className="text-lg font-bold text-emerald-600">{summary.winner.score}점</p>
+                    <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">{summary.winner.score}점</p>
                   </div>
                 )}
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">비교 게임</p>
+                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg text-slate-900 dark:text-slate-100">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">비교 게임</p>
                   <p className="text-2xl font-bold">{results.length}개</p>
                 </div>
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">평균 점수</p>
+                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg text-slate-900 dark:text-slate-100">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">평균 점수</p>
                   <p className="text-2xl font-bold">{summary?.averageScore?.toFixed(0) || '-'}</p>
                 </div>
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">템플릿</p>
+                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg text-slate-900 dark:text-slate-100">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">템플릿</p>
                   <p className="text-sm font-medium truncate">{benchmarkData?.data?.template?.name}</p>
                 </div>
               </div>

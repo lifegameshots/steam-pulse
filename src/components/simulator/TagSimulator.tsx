@@ -383,18 +383,18 @@ export function TagSimulator() {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 border-purple-200 dark:border-purple-800">
+            <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950 dark:to-pink-950 border-purple-200 dark:border-purple-800 text-slate-900 dark:text-slate-100">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">기회 점수</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">기회 점수</p>
                     <p className={`text-3xl font-bold ${getScoreColor(simulation.analysis.opportunityScore)}`}>
                       {simulation.analysis.opportunityScore.toFixed(2)}
                     </p>
                   </div>
                   <Zap className="h-8 w-8 text-yellow-500" />
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
                   성공률: {(simulation.analysis.successRate * 100).toFixed(0)}%
                 </p>
               </CardContent>
@@ -535,7 +535,7 @@ export function TagSimulator() {
 
       {/* AI 추천 결과 */}
       {recommendMutation.data && (
-        <Card className="border-yellow-200 dark:border-yellow-800 bg-yellow-50/50 dark:bg-yellow-950/20">
+        <Card className="border-yellow-200 dark:border-yellow-800 bg-yellow-50/50 dark:bg-yellow-950/20 text-slate-900 dark:text-slate-100">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lightbulb className="h-5 w-5 text-yellow-500" />

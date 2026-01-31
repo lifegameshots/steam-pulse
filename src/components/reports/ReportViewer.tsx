@@ -234,9 +234,9 @@ function MetricsSection({ content }: { content: ReportSection['content'] }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {content.metrics.map((metric, i) => (
-        <div key={i} className="text-center p-4 bg-gray-50 rounded-lg">
+        <div key={i} className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg text-slate-900 dark:text-slate-100">
           <div className="text-2xl font-bold">{metric.value}</div>
-          <div className="text-sm text-muted-foreground">{metric.label}</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400">{metric.label}</div>
           {metric.change !== undefined && (
             <div className={`text-sm ${
               metric.trend === 'up' ? 'text-green-600' :
@@ -358,7 +358,9 @@ function InsightsSection({ content }: { content: ReportSection['content'] }) {
         <div
           key={i}
           className={`p-4 rounded-lg ${
-            insight.type === 'causation' ? 'bg-blue-50' : 'bg-purple-50'
+            insight.type === 'causation'
+              ? 'bg-blue-50 dark:bg-blue-950/30 text-slate-900 dark:text-slate-100'
+              : 'bg-purple-50 dark:bg-purple-950/30 text-slate-900 dark:text-slate-100'
           }`}
         >
           <div className="flex items-center gap-2 mb-2">
@@ -366,13 +368,13 @@ function InsightsSection({ content }: { content: ReportSection['content'] }) {
               {insight.type === 'causation' ? '🔍 인과 관계' : '📊 상관 관계'}
             </Badge>
             {insight.confidence && (
-              <span className="text-sm text-muted-foreground">
+              <span className="text-sm text-slate-500 dark:text-slate-400">
                 신뢰도: {insight.confidence}%
               </span>
             )}
           </div>
           <h4 className="font-medium">{insight.title}</h4>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
             {insight.description}
           </p>
         </div>
@@ -451,9 +453,9 @@ function RecommendationsSection({ content }: { content: ReportSection['content']
   if (!content.recommendations) return null;
 
   const priorityColors = {
-    high: 'bg-red-50 border-red-200',
-    medium: 'bg-yellow-50 border-yellow-200',
-    low: 'bg-green-50 border-green-200',
+    high: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-slate-900 dark:text-slate-100',
+    medium: 'bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800 text-slate-900 dark:text-slate-100',
+    low: 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 text-slate-900 dark:text-slate-100',
   };
 
   const priorityLabels = {

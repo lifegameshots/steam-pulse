@@ -579,7 +579,7 @@ export default function AnalyticsPage() {
                         .filter(g => g.trend === 'rising')
                         .slice(0, 5)
                         .map((game) => (
-                          <div key={game.appId} className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-950/30 rounded-lg">
+                          <div key={game.appId} className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-950/30 rounded-lg text-slate-900 dark:text-slate-100">
                             <span className="text-sm font-medium truncate flex-1">{game.name}</span>
                             <Badge className="bg-green-500 ml-2">
                               +{game.changePercent.toFixed(1)}%
@@ -608,7 +608,7 @@ export default function AnalyticsPage() {
                         .filter(g => g.trend === 'falling')
                         .slice(0, 5)
                         .map((game) => (
-                          <div key={game.appId} className="flex items-center justify-between p-2 bg-red-50 dark:bg-red-950/30 rounded-lg">
+                          <div key={game.appId} className="flex items-center justify-between p-2 bg-red-50 dark:bg-red-950/30 rounded-lg text-slate-900 dark:text-slate-100">
                             <span className="text-sm font-medium truncate flex-1">{game.name}</span>
                             <Badge className="bg-red-500 ml-2">
                               {game.changePercent.toFixed(1)}%
@@ -785,7 +785,7 @@ export default function AnalyticsPage() {
                     {positioningData.marketGaps.map((gap, index) => (
                       <div
                         key={index}
-                        className={`p-3 rounded-lg border-l-4 ${
+                        className={`p-3 rounded-lg border-l-4 text-slate-900 dark:text-slate-100 ${
                           gap.opportunity === 'high' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' :
                           gap.opportunity === 'medium' ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20' :
                           'border-gray-500 bg-gray-50 dark:bg-gray-950/20'
@@ -845,7 +845,7 @@ export default function AnalyticsPage() {
               <CardContent className="px-4 sm:px-6">
                 <div className="space-y-2">
                   {currentEvents.map((event) => (
-                    <div key={event.id} className="flex items-center gap-2 p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                    <div key={event.id} className="flex items-center gap-2 p-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-slate-900 dark:text-slate-100">
                       {getEventTypeIcon(event.type)}
                       <span className="font-medium text-sm">{event.nameKr}</span>
                       <Badge className={getImpactBadge(event.impact).className}>
