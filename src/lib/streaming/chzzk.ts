@@ -217,6 +217,23 @@ export async function getPopularLives(options?: { size?: number }): Promise<Chzz
             lives = data.popularLives;
           } else if (data?.liveList && Array.isArray(data.liveList)) {
             lives = data.liveList;
+          } else if (data?.topRecommendationLiveList && Array.isArray(data.topRecommendationLiveList)) {
+            // /service/v1/home/lives 응답 구조
+            lives = data.topRecommendationLiveList;
+          } else if (data?.streamingLiveList && Array.isArray(data.streamingLiveList)) {
+            lives = data.streamingLiveList;
+          }
+
+          // 여러 리스트를 합칠 수도 있음
+          if (lives.length === 0 && data) {
+            const allLives: ChzzkLive[] = [];
+            if (data.topRecommendationLiveList) allLives.push(...data.topRecommendationLiveList);
+            if (data.streamingLiveList) allLives.push(...data.streamingLiveList);
+            if (data.esportsLiveList) allLives.push(...data.esportsLiveList);
+            if (allLives.length > 0) {
+              lives = allLives;
+              console.log('[Chzzk] Combined multiple lists, total:', lives.length);
+            }
           }
 
           console.log('[Chzzk] Extracted lives count:', lives.length);
