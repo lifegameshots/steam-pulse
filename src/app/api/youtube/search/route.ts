@@ -55,11 +55,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // YouTube 검색
+    // YouTube 검색 (영어, 중국어, 일본어, 한국어 우선순위로 검색)
     const searchResult = await searchGameReviews(gameName, {
       maxResults,
-      includeKorean: true,
-      includeEnglish: true,
       minDuration: 'medium',
     });
 

@@ -103,6 +103,9 @@ function parseDuration(duration: string): number {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
+// 언어 우선순위 (영어, 중국어, 일본어, 한국어)
+const LANGUAGE_PRIORITY = ['en', 'zh', 'ja', 'ko'];
+
 /**
  * YouTube 검색 API
  */
@@ -115,6 +118,7 @@ export async function searchYouTubeVideos(
     publishedAfter?: string;
     publishedBefore?: string;
     videoDuration?: 'short' | 'medium' | 'long';
+    relevanceLanguage?: string;
   } = {}
 ): Promise<YouTubeSearchResult> {
   const apiKey = getYouTubeApiKey();
@@ -129,10 +133,11 @@ export async function searchYouTubeVideos(
     publishedAfter,
     publishedBefore,
     videoDuration,
+    relevanceLanguage,
   } = options;
 
   // 캐시 키 생성
-  const cacheKey = `youtube:search:${query}:${maxResults}:${order}:${pageToken || 'first'}`;
+  const cacheKey = `youtube:search:${query}:${maxResults}:${order}:${relevanceLanguage || 'multi'}:${pageToken || 'first'}`;
   const cached = await redis.get<YouTubeSearchResult>(cacheKey);
   if (cached) return cached;
 
@@ -143,8 +148,12 @@ export async function searchYouTubeVideos(
     q: query,
     maxResults: maxResults.toString(),
     order,
-    relevanceLanguage: 'ko',
   });
+
+  // 특정 언어가 지정된 경우 해당 언어로, 아니면 지정 안함 (다국어 검색)
+  if (relevanceLanguage) {
+    params.append('relevanceLanguage', relevanceLanguage);
+  }
 
   if (pageToken) params.append('pageToken', pageToken);
   if (publishedAfter) params.append('publishedAfter', publishedAfter);
@@ -172,6 +181,71 @@ export async function searchYouTubeVideos(
     videos,
     nextPageToken: data.nextPageToken,
     totalResults: data.pageInfo?.totalResults || videos.length,
+  };
+
+  // 캐시 저장
+  await redis.setex(cacheKey, CACHE_TTL.SEARCH, result);
+
+  return result;
+}
+
+/**
+ * 다국어 우선순위 YouTube 검색
+ * 영어, 중국어, 일본어, 한국어 순서로 검색하여 결과 병합
+ */
+export async function searchYouTubeMultiLang(
+  query: string,
+  options: {
+    maxResults?: number;
+    order?: 'date' | 'rating' | 'relevance' | 'viewCount';
+    publishedAfter?: string;
+    videoDuration?: 'short' | 'medium' | 'long';
+  } = {}
+): Promise<YouTubeSearchResult> {
+  const { maxResults = 25, order = 'relevance', publishedAfter, videoDuration } = options;
+
+  // 캐시 키 생성
+  const cacheKey = `youtube:search:multilang:${query}:${maxResults}:${order}`;
+  const cached = await redis.get<YouTubeSearchResult>(cacheKey);
+  if (cached) return cached;
+
+  // 언어별 검색 결과 수 분배 (영어 > 중국어 > 일본어 > 한국어)
+  const languageWeights = { en: 0.35, zh: 0.25, ja: 0.20, ko: 0.20 };
+  const allVideos: YouTubeVideo[] = [];
+  const seenIds = new Set<string>();
+
+  for (const lang of LANGUAGE_PRIORITY) {
+    const langResults = Math.ceil(maxResults * languageWeights[lang as keyof typeof languageWeights]);
+
+    try {
+      const result = await searchYouTubeVideos(query, {
+        maxResults: langResults + 3, // 중복 대비 여유분
+        order,
+        publishedAfter,
+        videoDuration,
+        relevanceLanguage: lang,
+      });
+
+      // 중복 제거하며 추가
+      for (const video of result.videos) {
+        if (!seenIds.has(video.id)) {
+          seenIds.add(video.id);
+          allVideos.push(video);
+        }
+      }
+    } catch (error) {
+      console.warn(`YouTube search failed for language "${lang}":`, error);
+    }
+  }
+
+  // 조회수 기준으로 정렬하여 상위 결과 반환
+  const sortedVideos = allVideos
+    .sort((a, b) => b.viewCount - a.viewCount)
+    .slice(0, maxResults);
+
+  const result: YouTubeSearchResult = {
+    videos: sortedVideos,
+    totalResults: allVideos.length,
   };
 
   // 캐시 저장
@@ -312,62 +386,60 @@ export async function getChannelDetails(channelIds: string[]): Promise<YouTubeCh
 }
 
 /**
- * 게임 리뷰 비디오 검색 (다양한 검색어 사용)
+ * 게임 리뷰 비디오 검색 (다국어 우선순위 적용)
+ * 영어, 중국어, 일본어, 한국어 순서로 검색
  */
 export async function searchGameReviews(
   gameName: string,
   options: {
     maxResults?: number;
-    includeKorean?: boolean;
-    includeEnglish?: boolean;
     minDuration?: 'short' | 'medium' | 'long';
   } = {}
 ): Promise<YouTubeSearchResult> {
   const {
     maxResults = 25,
-    includeKorean = true,
-    includeEnglish = true,
     minDuration = 'medium',
   } = options;
 
-  // 검색어 조합 - 다양한 검색어로 여러 번 검색하여 결과 병합
-  const searchQueries: string[] = [];
+  // 캐시 키 생성
+  const cacheKey = `youtube:game-review:${gameName}:${maxResults}:${minDuration}`;
+  const cached = await redis.get<YouTubeSearchResult>(cacheKey);
+  if (cached) return cached;
 
-  if (includeKorean) {
-    searchQueries.push(`${gameName} 리뷰`);
-    searchQueries.push(`${gameName} 후기 추천`);
-  }
+  // 언어별 검색어 및 가중치 (영어 > 중국어 > 일본어 > 한국어)
+  const languageSearches = [
+    { lang: 'en', queries: [`${gameName} review`, `${gameName} is it worth it`], weight: 0.35 },
+    { lang: 'zh', queries: [`${gameName} 评测`, `${gameName} 游戏评价`], weight: 0.25 },
+    { lang: 'ja', queries: [`${gameName} レビュー`, `${gameName} 評価`], weight: 0.20 },
+    { lang: 'ko', queries: [`${gameName} 리뷰`, `${gameName} 후기 추천`], weight: 0.20 },
+  ];
 
-  if (includeEnglish) {
-    searchQueries.push(`${gameName} review`);
-    searchQueries.push(`${gameName} is it worth it`);
-  }
-
-  // 각 검색어로 검색 (결과 수 분배)
-  const resultsPerQuery = Math.ceil(maxResults / searchQueries.length);
   const allVideos: YouTubeVideo[] = [];
   const seenIds = new Set<string>();
 
-  for (const query of searchQueries) {
-    try {
-      const result = await searchYouTubeVideos(query, {
-        maxResults: resultsPerQuery + 5, // 중복 대비 여유분
-        order: 'relevance',
-        videoDuration: minDuration,
-      });
+  for (const { lang, queries, weight } of languageSearches) {
+    const langMaxResults = Math.ceil(maxResults * weight);
+    const resultsPerQuery = Math.ceil(langMaxResults / queries.length);
 
-      // 중복 제거하며 추가
-      for (const video of result.videos) {
-        if (!seenIds.has(video.id)) {
-          seenIds.add(video.id);
-          allVideos.push(video);
+    for (const query of queries) {
+      try {
+        const result = await searchYouTubeVideos(query, {
+          maxResults: resultsPerQuery + 3, // 중복 대비 여유분
+          order: 'relevance',
+          videoDuration: minDuration,
+          relevanceLanguage: lang,
+        });
+
+        // 중복 제거하며 추가
+        for (const video of result.videos) {
+          if (!seenIds.has(video.id)) {
+            seenIds.add(video.id);
+            allVideos.push(video);
+          }
         }
+      } catch (error) {
+        console.warn(`YouTube search failed for query "${query}" (${lang}):`, error);
       }
-
-      // 목표 수량 도달하면 중단
-      if (allVideos.length >= maxResults) break;
-    } catch (error) {
-      console.warn(`YouTube search failed for query "${query}":`, error);
     }
   }
 
@@ -376,10 +448,15 @@ export async function searchGameReviews(
     .sort((a, b) => b.viewCount - a.viewCount)
     .slice(0, maxResults);
 
-  return {
+  const result: YouTubeSearchResult = {
     videos: sortedVideos,
     totalResults: allVideos.length,
   };
+
+  // 캐시 저장
+  await redis.setex(cacheKey, CACHE_TTL.SEARCH, result);
+
+  return result;
 }
 
 /**

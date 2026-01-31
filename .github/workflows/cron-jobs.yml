@@ -1,0 +1,55 @@
+# GitHub Actions를 이용한 Cron Job 스케줄러
+# Vercel Hobby 플랜에서 무료로 여러 Cron Job 실행 가능
+
+name: Scheduled Cron Jobs
+
+on:
+  schedule:
+    # 스트리밍 데이터 수집 - 매 시간 0분 (UTC)
+    - cron: '0 * * * *'
+    # 일별 집계 - 매일 21:00 UTC (= 06:00 KST)
+    - cron: '0 21 * * *'
+
+  # 수동 실행 가능 (테스트용)
+  workflow_dispatch:
+    inputs:
+      job_type:
+        description: '실행할 작업'
+        required: true
+        default: 'collect-streaming'
+        type: choice
+        options:
+          - collect-streaming
+          - aggregate-streaming
+          - all
+
+jobs:
+  collect-streaming:
+    # 매 시간 실행 또는 수동 실행 시
+    if: github.event.schedule == '0 * * * *' || github.event.inputs.job_type == 'collect-streaming' || github.event.inputs.job_type == 'all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 스트리밍 데이터 수집
+        run: |
+          echo "Collecting streaming data at $(date)"
+          curl -X GET "${{ secrets.VERCEL_APP_URL }}/api/cron/collect-streaming" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --fail --silent --show-error --max-time 120
+        env:
+          VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+  aggregate-streaming:
+    # 매일 21:00 UTC 실행 또는 수동 실행 시
+    if: github.event.schedule == '0 21 * * *' || github.event.inputs.job_type == 'aggregate-streaming' || github.event.inputs.job_type == 'all'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 일별 스트리밍 집계
+        run: |
+          echo "Aggregating streaming data at $(date)"
+          curl -X GET "${{ secrets.VERCEL_APP_URL }}/api/cron/aggregate-streaming" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            --fail --silent --show-error --max-time 180
+        env:
+          VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

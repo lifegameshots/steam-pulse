@@ -6,10 +6,12 @@
  * - Redis 캐싱으로 대시보드 데이터 2분 캐시
  * - 타임아웃 적용으로 무한 대기 방지
  * - 실패 시 빈 데이터 반환 (Graceful Degradation)
+ * - 게임 이름 표준화로 플랫폼 간 데이터 통합
  */
 
 import * as twitch from './twitch';
 import * as chzzk from './chzzk';
+import { standardizeGameName } from './gameNameMatcher';
 import { getOrSet } from '@/lib/redis';
 import { CACHE_TTL } from '@/lib/utils/constants';
 import type {
@@ -160,8 +162,12 @@ export async function getDashboardData(): Promise<StreamingDashboardData> {
           chzzkStreams: number;
         }>();
 
+        // Twitch 데이터 처리 (게임 이름 표준화 적용)
         twitchTop.forEach(item => {
-          const existing = gameMap.get(item.game.name) || {
+          // 게임 이름 표준화
+          const standardName = standardizeGameName(item.game.name, 'twitch');
+
+          const existing = gameMap.get(standardName) || {
             viewers: 0, streams: 0,
             twitchViewers: 0, twitchStreams: 0,
             chzzkViewers: 0, chzzkStreams: 0,
@@ -170,15 +176,19 @@ export async function getDashboardData(): Promise<StreamingDashboardData> {
           existing.streams += item.streamCount;
           existing.twitchViewers += item.viewerCount;
           existing.twitchStreams += item.streamCount;
-          gameMap.set(item.game.name, existing);
+          gameMap.set(standardName, existing);
 
           // 플랫폼 총계
           twitchTotalViewers += item.viewerCount;
           twitchTotalStreams += item.streamCount;
         });
 
+        // Chzzk 데이터 처리 (게임 이름 표준화 적용)
         chzzkTop.forEach(item => {
-          const existing = gameMap.get(item.categoryName) || {
+          // 게임 이름 표준화
+          const standardName = standardizeGameName(item.categoryName, 'chzzk');
+
+          const existing = gameMap.get(standardName) || {
             viewers: 0, streams: 0,
             twitchViewers: 0, twitchStreams: 0,
             chzzkViewers: 0, chzzkStreams: 0,
@@ -187,7 +197,7 @@ export async function getDashboardData(): Promise<StreamingDashboardData> {
           existing.streams += item.streamCount;
           existing.chzzkViewers += item.viewerCount;
           existing.chzzkStreams += item.streamCount;
-          gameMap.set(item.categoryName, existing);
+          gameMap.set(standardName, existing);
 
           // 플랫폼 총계
           chzzkTotalViewers += item.viewerCount;
@@ -247,3 +257,16 @@ export async function getDashboardData(): Promise<StreamingDashboardData> {
 
 // 개별 플랫폼 API도 export
 export { twitch, chzzk };
+
+// 게임 이름 매칭 유틸리티 export
+export {
+  standardizeGameName,
+  standardizeGameNameAsync,
+  isSameGame,
+  findBestMatch,
+  loadIGDBMappingCache,
+  prefetchIGDBMappings,
+} from './gameNameMatcher';
+
+// IGDB API export
+export * as igdb from './igdb';

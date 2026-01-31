@@ -277,19 +277,14 @@ function generateInsights(
 ): Array<{ icon: string; title: string; description: string }> {
   const insights: Array<{ icon: string; title: string; description: string }> = [];
 
-  // 총 시청자 분석
-  const totalTwitchViewers = allGames.reduce((sum, g) => sum + (g.twitchViewers || 0), 0);
-  const totalChzzkViewers = allGames.reduce((sum, g) => sum + (g.chzzkViewers || 0), 0);
-  const totalViewers = totalTwitchViewers + totalChzzkViewers;
-
-  if (totalViewers > 0) {
-    const twitchShare = ((totalTwitchViewers / totalViewers) * 100).toFixed(0);
+  // 총 게임/스트림 수 요약
+  const totalGames = allGames.length;
+  const totalStreams = allGames.reduce((sum, g) => g.streams + sum, 0);
+  if (totalGames > 0) {
     insights.push({
       icon: '📊',
-      title: `Twitch가 시청자의 ${twitchShare}% 차지`,
-      description: totalTwitchViewers > totalChzzkViewers
-        ? '글로벌 게임 스트리밍은 Twitch가 주도'
-        : 'Chzzk가 한국 시장에서 강세',
+      title: `${totalGames}개 게임 추적 중`,
+      description: `총 ${formatNumber(totalStreams)}개 방송이 진행 중`,
     });
   }
 

@@ -153,7 +153,11 @@ export default function StreamingPage() {
                   Twitch, Chzzk에서 검색 중...
                 </div>
               ) : searchResults?.streams?.length > 0 ? (
-                <LiveStreamList streams={searchResults.streams} compact />
+                <div className="space-y-4">
+                  {/* 플랫폼별 시청자 비율 표시 */}
+                  <PlatformRatioBar streams={searchResults.streams} gameName={searchQuery} />
+                  <LiveStreamList streams={searchResults.streams} compact />
+                </div>
               ) : (
                 <div className="text-slate-400 text-sm">
                   <p>"{searchQuery}"에 대한 검색 결과가 없습니다</p>
@@ -283,4 +287,67 @@ function formatNumber(num: number): string {
     return `${(num / 1000).toFixed(1)}K`;
   }
   return num.toLocaleString();
+}
+
+// 검색 결과 플랫폼별 시청자 비율 컴포넌트
+function PlatformRatioBar({
+  streams,
+  gameName,
+}: {
+  streams: Array<{ platform: string; viewerCount: number }>;
+  gameName: string;
+}) {
+  const twitchViewers = streams
+    .filter((s) => s.platform === 'twitch')
+    .reduce((sum, s) => sum + s.viewerCount, 0);
+  const chzzkViewers = streams
+    .filter((s) => s.platform === 'chzzk')
+    .reduce((sum, s) => sum + s.viewerCount, 0);
+  const total = twitchViewers + chzzkViewers;
+
+  if (total === 0) return null;
+
+  const twitchPercent = (twitchViewers / total) * 100;
+  const chzzkPercent = (chzzkViewers / total) * 100;
+
+  // 어느 플랫폼이 더 인기 있는지 판단
+  const dominantPlatform = twitchViewers > chzzkViewers ? 'Twitch' : 'Chzzk';
+  const dominantPercent = Math.max(twitchPercent, chzzkPercent).toFixed(0);
+
+  return (
+    <div className="p-3 bg-slate-900/70 rounded-lg border border-slate-700">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-medium text-white">
+          "{gameName}" 플랫폼별 시청자 비율
+        </span>
+        <span className="text-xs text-slate-400">
+          {dominantPlatform}에서 {dominantPercent}% 시청 중
+        </span>
+      </div>
+      <div className="flex h-3 rounded-full overflow-hidden bg-slate-700">
+        {twitchViewers > 0 && (
+          <div
+            className="bg-purple-500 transition-all"
+            style={{ width: `${twitchPercent}%` }}
+            title={`Twitch: ${formatNumber(twitchViewers)}`}
+          />
+        )}
+        {chzzkViewers > 0 && (
+          <div
+            className="bg-green-500 transition-all"
+            style={{ width: `${chzzkPercent}%` }}
+            title={`Chzzk: ${formatNumber(chzzkViewers)}`}
+          />
+        )}
+      </div>
+      <div className="flex justify-between text-xs mt-1">
+        <span className="text-purple-400">
+          Twitch: {formatNumber(twitchViewers)} ({twitchPercent.toFixed(0)}%)
+        </span>
+        <span className="text-green-400">
+          Chzzk: {formatNumber(chzzkViewers)} ({chzzkPercent.toFixed(0)}%)
+        </span>
+      </div>
+    </div>
+  );
 }
