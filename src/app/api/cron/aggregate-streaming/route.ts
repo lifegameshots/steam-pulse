@@ -153,7 +153,7 @@ async function updateGameDailyMetrics(targetDate: string): Promise<number> {
 
       const ccuPeak = ccuData?.[0]?.ccu || null;
       const ccuAvg = ccuData && ccuData.length > 0
-        ? Math.round(ccuData.reduce((sum, d) => sum + d.ccu, 0) / ccuData.length)
+        ? Math.round(ccuData.reduce((sum: number, d: any) => sum + d.ccu, 0) / ccuData.length)
         : null;
 
       // 리뷰 히스토리에서 해당 날짜 데이터 조회
