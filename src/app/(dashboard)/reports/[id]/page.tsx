@@ -1,12 +1,24 @@
 'use client';
 
+import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Edit2, Trash2, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { ReportViewer } from '@/components/reports/ReportViewer';
+import { ReportShareDialog } from '@/components/reports/ReportShareDialog';
 import type { Report, ExportFormat } from '@/types/report';
 
 export default function ReportDetailPage() {
@@ -14,6 +26,8 @@ export default function ReportDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const reportId = params.id as string;
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // 리포트 상세 조회
   const { data, isLoading, error } = useQuery({
@@ -103,15 +117,12 @@ export default function ReportDetailPage() {
 
   // 공유
   const handleShare = () => {
-    // 추후 공유 다이얼로그 구현
-    alert('공유 기능은 추후 구현 예정입니다.');
+    setShowShareDialog(true);
   };
 
   // 삭제 확인
   const handleDelete = () => {
-    if (confirm('정말로 이 리포트를 삭제하시겠습니까?')) {
-      deleteMutation.mutate();
-    }
+    setShowDeleteDialog(true);
   };
 
   if (isLoading) {
@@ -204,6 +215,40 @@ export default function ReportDetailPage() {
         onShare={handleShare}
         isOwner={isOwner}
       />
+
+      {/* 공유 다이얼로그 */}
+      <ReportShareDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        reportId={reportId}
+        reportTitle={report.title}
+      />
+
+      {/* 삭제 확인 다이얼로그 */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="bg-slate-900 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">리포트 삭제</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              정말로 &quot;{report.title}&quot; 리포트를 삭제하시겠습니까?
+              <br />
+              이 작업은 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-800 border-slate-600 text-slate-100 hover:bg-slate-700">
+              취소
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate()}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? '삭제 중...' : '삭제'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

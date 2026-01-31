@@ -24,8 +24,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Loader2 } from 'lucide-react';
 import type { Report, ReportSection, ExportFormat } from '@/types/report';
 import { REPORT_TYPE_INFO, EXPORT_FORMAT_INFO } from '@/types/report';
+import { exportReportToPdf } from '@/lib/utils/pdfExport';
 
 interface ReportViewerProps {
   report: Report;
@@ -46,7 +48,21 @@ export function ReportViewer({
   isOwner = false,
 }: ReportViewerProps) {
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
   const typeInfo = REPORT_TYPE_INFO[report.type];
+
+  const handlePdfExport = async () => {
+    setIsExportingPdf(true);
+    try {
+      await exportReportToPdf(report);
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      alert('PDF 내보내기에 실패했습니다.');
+    } finally {
+      setIsExportingPdf(false);
+      setShowExportMenu(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -84,17 +100,34 @@ export function ReportViewer({
             <Button
               variant="outline"
               onClick={() => setShowExportMenu(!showExportMenu)}
+              disabled={isExportingPdf}
             >
-              내보내기
+              {isExportingPdf ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  PDF 생성 중...
+                </>
+              ) : (
+                '내보내기'
+              )}
             </Button>
             {showExportMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-10">
-                {(['markdown', 'json'] as ExportFormat[]).map((format) => {
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg shadow-lg z-10">
+                {/* PDF 내보내기 */}
+                <button
+                  className="w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-slate-700 rounded-t-lg text-slate-900 dark:text-slate-100"
+                  onClick={handlePdfExport}
+                  disabled={isExportingPdf}
+                >
+                  📄 PDF
+                </button>
+                {/* 기존 포맷 */}
+                {(['markdown', 'json'] as ExportFormat[]).map((format, index) => {
                   const info = EXPORT_FORMAT_INFO[format];
                   return (
                     <button
                       key={format}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-50 first:rounded-t-lg last:rounded-b-lg"
+                      className={`w-full px-4 py-2 text-left hover:bg-gray-50 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 ${index === 1 ? 'rounded-b-lg' : ''}`}
                       onClick={() => {
                         onExport?.(format);
                         setShowExportMenu(false);

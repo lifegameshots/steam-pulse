@@ -37,9 +37,20 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { PROJECT_TYPE_INFO, PROJECT_STATUS_INFO } from '@/types/project';
 import type { Project } from '@/types/project';
 import { CreateReportDialog } from '@/components/reports/CreateReportDialog';
+import { ProjectSettingsDialog } from '@/components/projects/ProjectSettingsDialog';
 
 /**
  * 집계 데이터 타입
@@ -84,6 +95,9 @@ export default function ProjectDetailPage() {
   const [isAddingGame, setIsAddingGame] = useState(false);
   const [gameSearchQuery, setGameSearchQuery] = useState('');
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
 
   // 프로젝트 조회
   const { data: projectData, isLoading, error } = useQuery({
@@ -190,6 +204,44 @@ export default function ProjectDetailPage() {
     },
   });
 
+  // 프로젝트 삭제
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to delete project');
+      }
+      return json;
+    },
+    onSuccess: () => {
+      router.push('/projects');
+    },
+  });
+
+  // 프로젝트 보관
+  const archiveMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'archived' }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to archive project');
+      }
+      return json.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setShowArchiveDialog(false);
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -227,6 +279,7 @@ export default function ProjectDetailPage() {
   const typeInfo = PROJECT_TYPE_INFO[project.type] || PROJECT_TYPE_INFO.custom;
   const statusInfo = PROJECT_STATUS_INFO[project.status] || PROJECT_STATUS_INFO.active;
   const analytics = analyticsData?.aggregated;
+  const isOwner = true; // TODO: 실제 소유자 체크 (user.id === project.ownerId)
 
   const filteredGames = project.games.filter((g) =>
     g.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -272,20 +325,23 @@ export default function ProjectDetailPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
               <Edit2 className="w-4 h-4 mr-2" />
               프로젝트 수정
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
               <Settings className="w-4 h-4 mr-2" />
               설정
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setShowArchiveDialog(true)}>
               <Archive className="w-4 h-4 mr-2" />
               보관하기
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-red-500">
+            <DropdownMenuItem
+              className="text-red-500"
+              onClick={() => setShowDeleteDialog(true)}
+            >
               <Trash2 className="w-4 h-4 mr-2" />
               삭제
             </DropdownMenuItem>
@@ -619,6 +675,66 @@ export default function ProjectDetailPage() {
         defaultProjectId={projectId}
         defaultAppIds={project.games.map((g) => g.appId)}
       />
+
+      {/* 프로젝트 설정 다이얼로그 */}
+      <ProjectSettingsDialog
+        open={showSettingsDialog}
+        onOpenChange={setShowSettingsDialog}
+        project={project}
+        isOwner={isOwner}
+      />
+
+      {/* 삭제 확인 다이얼로그 */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent className="bg-slate-900 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">프로젝트 삭제</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              정말로 &quot;{project.name}&quot; 프로젝트를 삭제하시겠습니까?
+              <br />
+              이 작업은 되돌릴 수 없으며, 모든 게임과 메모가 함께 삭제됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-800 border-slate-600 text-slate-100 hover:bg-slate-700">
+              취소
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteMutation.mutate()}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? '삭제 중...' : '삭제'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 보관 확인 다이얼로그 */}
+      <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+        <AlertDialogContent className="bg-slate-900 border-slate-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">프로젝트 보관</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              &quot;{project.name}&quot; 프로젝트를 보관하시겠습니까?
+              <br />
+              보관된 프로젝트는 목록에서 숨겨지지만, 나중에 복원할 수 있습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-slate-800 border-slate-600 text-slate-100 hover:bg-slate-700">
+              취소
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => archiveMutation.mutate()}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+              disabled={archiveMutation.isPending}
+            >
+              {archiveMutation.isPending ? '보관 중...' : '보관'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
