@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   FileText,
   BarChart3,
   TrendingUp,
@@ -22,8 +29,10 @@ import {
   FolderKanban,
   Sparkles,
   Loader2,
+  CheckCircle,
 } from 'lucide-react';
 import type { ReportType } from '@/types/report';
+import type { Project } from '@/types/project';
 
 const REPORT_TYPE_OPTIONS: {
   type: ReportType;
@@ -83,7 +92,38 @@ export function CreateReportDialog({
   const [reportType, setReportType] = useState<ReportType>('game_analysis');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [autoGenerate, setAutoGenerate] = useState(true);
+  // selectedProjectId: defaultProjectId가 있으면 사용, 없으면 undefined
+  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(
+    defaultProjectId
+  );
+
+  // 프로젝트 목록 조회
+  const { data: projectsData, isLoading: isLoadingProjects } = useQuery({
+    queryKey: ['projects-list'],
+    queryFn: async () => {
+      const res = await fetch('/api/projects?pageSize=50');
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return { projects: [] };
+      }
+      return json.data as { projects: Project[]; total: number };
+    },
+    enabled: open,
+  });
+
+  // 선택된 프로젝트 (defaultProjectId 우선, 그 다음 selectedProjectId)
+  const effectiveProjectId = defaultProjectId ?? selectedProjectId;
+  const selectedProject = projectsData?.projects?.find(
+    (p) => p.id === effectiveProjectId
+  );
+
+  // 현재 사용할 appIds 결정
+  const effectiveAppIds = useMemo(() => {
+    return selectedProject?.games.map((g) => g.appId) ?? defaultAppIds ?? [];
+  }, [selectedProject, defaultAppIds]);
+
+  // autoGenerate는 게임이 있으면 항상 true로 파생
+  const autoGenerate = effectiveAppIds.length > 0;
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -91,12 +131,14 @@ export function CreateReportDialog({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: title || `새 ${REPORT_TYPE_OPTIONS.find(o => o.type === reportType)?.name} 리포트`,
+          title:
+            title ||
+            `새 ${REPORT_TYPE_OPTIONS.find((o) => o.type === reportType)?.name} 리포트`,
           description,
           type: reportType,
-          targetProjectId: defaultProjectId,
-          targetAppIds: defaultAppIds,
-          autoGenerate,
+          targetProjectId: selectedProjectId,
+          targetAppIds: effectiveAppIds,
+          autoGenerate: autoGenerate && effectiveAppIds.length > 0,
         }),
       });
       const json = await res.json();
@@ -121,7 +163,9 @@ export function CreateReportDialog({
     setReportType('game_analysis');
     setTitle('');
     setDescription('');
-    setAutoGenerate(true);
+    if (!defaultProjectId) {
+      setSelectedProjectId(undefined);
+    }
   };
 
   const handleClose = () => {
@@ -137,6 +181,8 @@ export function CreateReportDialog({
   const handleCreate = () => {
     createMutation.mutate();
   };
+
+  const projects = projectsData?.projects ?? [];
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -176,13 +222,82 @@ export function CreateReportDialog({
           </div>
         ) : (
           <div className="space-y-4 py-4">
+            {/* 프로젝트 선택 */}
+            {!defaultProjectId && projects.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-slate-300">프로젝트 연결 (선택)</Label>
+                <Select
+                  value={selectedProjectId ?? 'none'}
+                  onValueChange={(value) =>
+                    setSelectedProjectId(value === 'none' ? undefined : value)
+                  }
+                >
+                  <SelectTrigger className="bg-slate-800 border-slate-700 text-white">
+                    <SelectValue placeholder="프로젝트를 선택하세요" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-800 border-slate-700">
+                    <SelectItem value="none" className="text-slate-400">
+                      프로젝트 없음
+                    </SelectItem>
+                    {projects.map((project) => (
+                      <SelectItem
+                        key={project.id}
+                        value={project.id}
+                        className="text-white"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>{project.name}</span>
+                          <span className="text-xs text-slate-400">
+                            ({project.games.length}개 게임)
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {isLoadingProjects && (
+                  <p className="text-xs text-slate-500">프로젝트 목록 로딩 중...</p>
+                )}
+              </div>
+            )}
+
+            {/* 선택된 프로젝트 정보 */}
+            {selectedProject && (
+              <div className="p-3 rounded-lg bg-indigo-500/10 border border-indigo-500/30">
+                <div className="flex items-center gap-2 text-indigo-400">
+                  <FolderKanban className="w-4 h-4" />
+                  <span className="text-sm font-medium">{selectedProject.name}</span>
+                </div>
+                <p className="text-sm text-slate-400 mt-1">
+                  {selectedProject.games.length}개의 게임이 리포트에 포함됩니다
+                </p>
+                {selectedProject.games.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {selectedProject.games.slice(0, 5).map((game) => (
+                      <span
+                        key={game.appId}
+                        className="text-xs px-2 py-0.5 bg-slate-700 rounded text-slate-300"
+                      >
+                        {game.name}
+                      </span>
+                    ))}
+                    {selectedProject.games.length > 5 && (
+                      <span className="text-xs px-2 py-0.5 bg-slate-700 rounded text-slate-400">
+                        +{selectedProject.games.length - 5}개
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="title" className="text-slate-300">
                 리포트 제목
               </Label>
               <Input
                 id="title"
-                placeholder={`예: ${new Date().toLocaleDateString('ko-KR')} ${REPORT_TYPE_OPTIONS.find(o => o.type === reportType)?.name}`}
+                placeholder={`예: ${new Date().toLocaleDateString('ko-KR')} ${REPORT_TYPE_OPTIONS.find((o) => o.type === reportType)?.name}`}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="bg-slate-800 border-slate-700 text-white"
@@ -203,14 +318,16 @@ export function CreateReportDialog({
               />
             </div>
 
-            {(defaultAppIds && defaultAppIds.length > 0) && (
+            {effectiveAppIds.length > 0 && (
               <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
                 <div className="flex items-center gap-2 text-blue-400">
                   <Sparkles className="w-4 h-4" />
                   <span className="text-sm font-medium">AI 자동 생성</span>
+                  <CheckCircle className="w-4 h-4 text-green-400" />
                 </div>
                 <p className="text-sm text-slate-400 mt-1">
-                  {defaultAppIds.length}개의 게임 데이터를 기반으로 리포트 내용이 자동으로 생성됩니다.
+                  {effectiveAppIds.length}개의 게임 데이터를 기반으로 리포트 내용이
+                  자동으로 생성됩니다.
                 </p>
               </div>
             )}

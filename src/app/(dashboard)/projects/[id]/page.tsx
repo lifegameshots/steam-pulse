@@ -19,6 +19,11 @@ import {
   MoreVertical,
   Edit2,
   Archive,
+  TrendingUp,
+  DollarSign,
+  Star,
+  Loader2,
+  PieChart,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +39,40 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PROJECT_TYPE_INFO, PROJECT_STATUS_INFO } from '@/types/project';
 import type { Project } from '@/types/project';
+import { CreateReportDialog } from '@/components/reports/CreateReportDialog';
+
+/**
+ * 집계 데이터 타입
+ */
+interface AggregatedAnalytics {
+  totalGames: number;
+  totalCCU: number;
+  avgCCU: number;
+  maxCCU: { appId: string; name: string; value: number };
+  totalReviews: number;
+  avgPositiveRate: number;
+  priceRange: { min: number; max: number; avg: number };
+  tagDistribution: Record<string, number>;
+  genreDistribution: Record<string, number>;
+  categoryBreakdown: Record<string, number>;
+  estimatedTotalRevenue: number;
+}
+
+/**
+ * 숫자 포맷팅 헬퍼
+ */
+function formatNumber(num: number): string {
+  if (num >= 1_000_000) return `${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `${(num / 1_000).toFixed(1)}K`;
+  return num.toLocaleString();
+}
+
+function formatCurrency(num: number): string {
+  if (num >= 1_000_000_000) return `$${(num / 1_000_000_000).toFixed(1)}B`;
+  if (num >= 1_000_000) return `$${(num / 1_000_000).toFixed(1)}M`;
+  if (num >= 1_000) return `$${(num / 1_000).toFixed(1)}K`;
+  return `$${num.toLocaleString()}`;
+}
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -44,6 +83,7 @@ export default function ProjectDetailPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddingGame, setIsAddingGame] = useState(false);
   const [gameSearchQuery, setGameSearchQuery] = useState('');
+  const [showReportDialog, setShowReportDialog] = useState(false);
 
   // 프로젝트 조회
   const { data: projectData, isLoading, error } = useQuery({
@@ -59,6 +99,23 @@ export default function ProjectDetailPage() {
     enabled: !!projectId,
   });
 
+  // 프로젝트 분석 데이터 조회
+  const { data: analyticsData, isLoading: isLoadingAnalytics } = useQuery({
+    queryKey: ['project-analytics', projectId],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/analytics`);
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        return null;
+      }
+      return json.data as {
+        aggregated: AggregatedAnalytics;
+        analyzedGames: number;
+      };
+    },
+    enabled: !!projectData && projectData.games.length > 0,
+  });
+
   // 게임 검색
   const { data: searchResults, isLoading: isSearching } = useQuery({
     queryKey: ['game-search', gameSearchQuery],
@@ -66,7 +123,8 @@ export default function ProjectDetailPage() {
       if (!gameSearchQuery) return [];
       const res = await fetch(`/api/steam/search?q=${encodeURIComponent(gameSearchQuery)}`);
       const json = await res.json();
-      return json.data || [];
+      // API 응답: { items: [...], total, timestamp }
+      return json.items || [];
     },
     enabled: gameSearchQuery.length >= 2,
   });
@@ -87,6 +145,7 @@ export default function ProjectDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-analytics', projectId] });
       setGameSearchQuery('');
       setIsAddingGame(false);
     },
@@ -106,6 +165,28 @@ export default function ProjectDetailPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['project-analytics', projectId] });
+    },
+  });
+
+  // 벤치마크 실행
+  const benchmarkMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/benchmark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to run benchmark');
+      }
+      return json.data;
+    },
+    onSuccess: () => {
+      // 벤치마크 결과 페이지로 이동
+      const gameIds = projectData?.games.map((g) => g.appId).join(',') ?? '';
+      router.push(`/benchmark?games=${gameIds}&projectId=${projectId}`);
     },
   });
 
@@ -145,6 +226,7 @@ export default function ProjectDetailPage() {
   const project = projectData;
   const typeInfo = PROJECT_TYPE_INFO[project.type] || PROJECT_TYPE_INFO.custom;
   const statusInfo = PROJECT_STATUS_INFO[project.status] || PROJECT_STATUS_INFO.active;
+  const analytics = analyticsData?.aggregated;
 
   const filteredGames = project.games.filter((g) =>
     g.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -211,7 +293,7 @@ export default function ProjectDetailPage() {
         </DropdownMenu>
       </div>
 
-      {/* 통계 카드 */}
+      {/* 통계 카드 - 기본 */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card className="bg-slate-800/50 border-slate-700">
           <CardContent className="pt-4">
@@ -242,6 +324,77 @@ export default function ProjectDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* 분석 통계 카드 */}
+      {analytics && (
+        <div className="grid gap-4 md:grid-cols-4">
+          <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/30">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-blue-400" />
+                <span className="text-sm text-slate-400">총 CCU</span>
+              </div>
+              <div className="text-2xl font-bold text-white mt-1">
+                {formatNumber(analytics.totalCCU)}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                평균: {formatNumber(analytics.avgCCU)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/30">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2">
+                <Star className="w-5 h-5 text-green-400" />
+                <span className="text-sm text-slate-400">평균 평점</span>
+              </div>
+              <div className="text-2xl font-bold text-white mt-1">
+                {analytics.avgPositiveRate}%
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                총 리뷰: {formatNumber(analytics.totalReviews)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/30">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-amber-400" />
+                <span className="text-sm text-slate-400">추정 총 매출</span>
+              </div>
+              <div className="text-2xl font-bold text-white mt-1">
+                {formatCurrency(analytics.estimatedTotalRevenue)}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                가격대: ${analytics.priceRange.min.toFixed(0)} - ${analytics.priceRange.max.toFixed(0)}
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/30">
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2">
+                <PieChart className="w-5 h-5 text-purple-400" />
+                <span className="text-sm text-slate-400">CCU 1위</span>
+              </div>
+              <div className="text-lg font-bold text-white mt-1 truncate">
+                {analytics.maxCCU.name || '-'}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                {formatNumber(analytics.maxCCU.value)} CCU
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* 분석 로딩 상태 */}
+      {isLoadingAnalytics && project.games.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+      )}
 
       {/* 게임 목록 */}
       <Card className="bg-slate-800/50 border-slate-700">
@@ -298,21 +451,21 @@ export default function ProjectDetailPage() {
               {isSearching && <p className="text-slate-400 text-sm">검색 중...</p>}
               {searchResults && searchResults.length > 0 && (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {searchResults.slice(0, 10).map((game: { appid: number; name: string }) => (
+                  {searchResults.slice(0, 10).map((game: { appId: number; name: string; headerImage?: string }) => (
                     <button
-                      key={game.appid}
+                      key={game.appId}
                       onClick={() =>
                         addGameMutation.mutate({
-                          appId: String(game.appid),
+                          appId: String(game.appId),
                           name: game.name,
-                          headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
+                          headerImage: game.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appId}/header.jpg`,
                         })
                       }
                       disabled={addGameMutation.isPending}
                       className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Image
-                        src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}
+                        src={game.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appId}/header.jpg`}
                         alt={game.name}
                         width={120}
                         height={45}
@@ -421,23 +574,51 @@ export default function ProjectDetailPage() {
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Link href={`/benchmark?games=${project.games.map((g) => g.appId).join(',')}`}>
-                  <Button variant="outline" className="border-indigo-500/50 text-indigo-400">
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    벤치마크 분석
-                  </Button>
-                </Link>
-                <Link href={`/reports?projectId=${project.id}`}>
-                  <Button className="bg-indigo-600 hover:bg-indigo-700">
-                    <FileText className="w-4 h-4 mr-2" />
-                    리포트 생성
-                  </Button>
-                </Link>
+                <Button
+                  variant="outline"
+                  className="border-indigo-500/50 text-indigo-400"
+                  onClick={() => benchmarkMutation.mutate()}
+                  disabled={benchmarkMutation.isPending}
+                >
+                  {benchmarkMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      분석 중...
+                    </>
+                  ) : (
+                    <>
+                      <BarChart3 className="w-4 h-4 mr-2" />
+                      벤치마크 분석
+                    </>
+                  )}
+                </Button>
+                <Button
+                  className="bg-indigo-600 hover:bg-indigo-700"
+                  onClick={() => setShowReportDialog(true)}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  리포트 생성
+                </Button>
               </div>
             </div>
+            {benchmarkMutation.isError && (
+              <p className="text-sm text-red-400 mt-2">
+                {benchmarkMutation.error instanceof Error
+                  ? benchmarkMutation.error.message
+                  : '벤치마크 분석에 실패했습니다'}
+              </p>
+            )}
           </CardContent>
         </Card>
       )}
+
+      {/* 리포트 생성 다이얼로그 */}
+      <CreateReportDialog
+        open={showReportDialog}
+        onOpenChange={setShowReportDialog}
+        defaultProjectId={projectId}
+        defaultAppIds={project.games.map((g) => g.appId)}
+      />
     </div>
   );
 }
