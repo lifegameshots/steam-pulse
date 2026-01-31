@@ -3,8 +3,15 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-// 인증이 필요 없는 경로
-const publicPaths = ['/login', '/callback', '/api/health'];
+// 인증이 필요 없는 경로 (게임 상세, 검색 등 공개 페이지 포함)
+const publicPaths = [
+  '/login',
+  '/callback',
+  '/api/health',
+  '/game',      // 게임 상세 페이지 (비로그인 사용자도 열람 가능)
+  '/search',    // 검색 페이지
+  '/trending',  // 트렌딩 페이지
+];
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -46,8 +53,13 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // API 경로 중 일부는 인증 없이 허용
-  if (pathname.startsWith('/api/steam') || pathname.startsWith('/api/steamspy')) {
+  // API 경로 중 일부는 인증 없이 허용 (게임 데이터 API는 공개)
+  if (
+    pathname.startsWith('/api/steam') ||
+    pathname.startsWith('/api/steamspy') ||
+    pathname.startsWith('/api/igdb') ||
+    pathname.startsWith('/api/insight')
+  ) {
     return supabaseResponse;
   }
 
@@ -69,8 +81,9 @@ export const config = {
      * - _next/static (정적 파일)
      * - _next/image (이미지 최적화)
      * - favicon.ico (파비콘)
-     * - public 폴더의 파일들
+     * - manifest.json (PWA 매니페스트)
+     * - public 폴더의 파일들 (이미지, JSON 등)
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json)$).*)',
   ],
 };
