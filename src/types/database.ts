@@ -1205,7 +1205,7 @@ export interface Database {
       };
       aggregate_streaming_daily_stats: {
         Args: {
-          p_date?: string;
+          p_date: string;
         };
         Returns: number;
       };
