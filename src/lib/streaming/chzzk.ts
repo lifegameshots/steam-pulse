@@ -197,10 +197,29 @@ export async function getPopularLives(options?: { size?: number }): Promise<Chzz
       for (const endpoint of endpoints) {
         try {
           console.log('[Chzzk] Trying endpoint:', endpoint);
-          const data = await chzzkFetch<{ data?: ChzzkLive[]; lives?: ChzzkLive[] }>(endpoint);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const data = await chzzkFetch<any>(endpoint);
+
+          console.log('[Chzzk] Response structure keys:', data ? Object.keys(data) : 'null');
 
           // 응답 구조가 다를 수 있으므로 여러 키 시도
-          const lives = data.data || data.lives || (Array.isArray(data) ? data : []);
+          let lives: ChzzkLive[] = [];
+
+          if (Array.isArray(data)) {
+            lives = data;
+          } else if (data?.data && Array.isArray(data.data)) {
+            lives = data.data;
+          } else if (data?.lives && Array.isArray(data.lives)) {
+            lives = data.lives;
+          } else if (data?.recommendedLives && Array.isArray(data.recommendedLives)) {
+            lives = data.recommendedLives;
+          } else if (data?.popularLives && Array.isArray(data.popularLives)) {
+            lives = data.popularLives;
+          } else if (data?.liveList && Array.isArray(data.liveList)) {
+            lives = data.liveList;
+          }
+
+          console.log('[Chzzk] Extracted lives count:', lives.length);
 
           if (lives.length > 0) {
             console.log('[Chzzk] Got', lives.length, 'lives from', endpoint);
