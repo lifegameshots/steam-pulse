@@ -40,7 +40,6 @@ export async function GET(request: NextRequest) {
     console.log(`[Cron] Aggregating data for ${targetDate}`);
 
     // 1. PostgreSQL 함수로 일별 집계 실행
-    // @ts-expect-error - Supabase RPC 타입 추론 이슈 우회 (p_date는 실제로 optional이지만 항상 전달)
     const { data: aggregateResult, error: aggregateError } = await supabase
       .rpc('aggregate_streaming_daily_stats', { p_date: targetDate });
 
