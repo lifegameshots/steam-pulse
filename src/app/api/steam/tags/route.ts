@@ -202,6 +202,7 @@ async function getGamesByTag(tagName: string): Promise<SteamSpyTagGame[]> {
     const data = await response.json();
 
     // 객체를 배열로 변환
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const games: SteamSpyTagGame[] = Object.entries(data).map(([appid, info]: [string, any]) => ({
       appid: parseInt(appid),
       name: info.name || '',

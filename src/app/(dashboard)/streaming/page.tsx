@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -160,9 +161,9 @@ export default function StreamingPage() {
                 </div>
               ) : (
                 <div className="text-slate-400 text-sm">
-                  <p>"{searchQuery}"에 대한 검색 결과가 없습니다</p>
+                  <p>&quot;{searchQuery}&quot;에 대한 검색 결과가 없습니다</p>
                   <p className="text-xs mt-1 text-slate-500">
-                    Tip: 게임 영문명이나 약어로 검색해보세요 (예: "배틀그라운드" 대신 "PUBG")
+                    Tip: 게임 영문명이나 약어로 검색해보세요 (예: &quot;배틀그라운드&quot; 대신 &quot;PUBG&quot;)
                   </p>
                 </div>
               )}
@@ -318,7 +319,7 @@ function PlatformRatioBar({
     <div className="p-3 bg-slate-900/70 rounded-lg border border-slate-700">
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm font-medium text-white">
-          "{gameName}" 플랫폼별 시청자 비율
+          &quot;{gameName}&quot; 플랫폼별 시청자 비율
         </span>
         <span className="text-xs text-slate-400">
           {dominantPlatform}에서 {dominantPercent}% 시청 중

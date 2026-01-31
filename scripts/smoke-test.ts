@@ -24,6 +24,7 @@ interface TestResult {
   dataCheck?: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const tests: { name: string; endpoint: string; method?: string; body?: object; check?: (data: any) => string | null }[] = [
   // === 검색 기능 ===
   {

@@ -52,6 +52,7 @@ async function fetchGameMetrics(appId: number): Promise<GameMetrics | null> {
       { next: { revalidate: 3600 } }
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let steamSpyData: any = {};
     if (steamSpyResponse.ok) {
       steamSpyData = await steamSpyResponse.json();
@@ -63,6 +64,7 @@ async function fetchGameMetrics(appId: number): Promise<GameMetrics | null> {
       { next: { revalidate: 1800 } }
     );
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let reviewData: any = { query_summary: {} };
     if (reviewResponse.ok) {
       reviewData = await reviewResponse.json();

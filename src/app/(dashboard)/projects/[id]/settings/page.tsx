@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Save, Trash2, AlertTriangle, Settings, Bell, Eye, Users } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, AlertTriangle, Settings, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -342,7 +342,7 @@ export default function ProjectSettingsPage() {
               {showDeleteConfirm ? (
                 <div className="space-y-3">
                   <p className="text-sm text-red-400 font-medium">
-                    정말로 "{projectData.name}" 프로젝트를 삭제하시겠습니까?
+                    정말로 &quot;{projectData.name}&quot; 프로젝트를 삭제하시겠습니까?
                   </p>
                   <div className="flex gap-2">
                     <Button

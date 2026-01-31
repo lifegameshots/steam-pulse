@@ -20,13 +20,13 @@ import { CACHE_TTL } from '@/lib/utils/constants';
 const CHZZK_CLIENT_ID = process.env.CHZZK_CLIENT_ID || '';
 const CHZZK_CLIENT_SECRET = process.env.CHZZK_CLIENT_SECRET || '';
 const CHZZK_API_BASE = 'https://api.chzzk.naver.com';
-const CHZZK_OPEN_API_BASE = 'https://openapi.chzzk.naver.com';
+// const CHZZK_OPEN_API_BASE = 'https://openapi.chzzk.naver.com'; // TODO: OAuth 구현 시 사용
 
 // API 타임아웃 설정
 const API_TIMEOUT = 5000; // 5초
 
-// 토큰 캐시
-let cachedToken: { token: string; expiresAt: number } | null = null;
+// 토큰 캐시 (TODO: OAuth 구현 시 사용)
+let _cachedToken: { token: string; expiresAt: number } | null = null;
 
 /**
  * 타임아웃을 적용한 fetch 래퍼
@@ -56,12 +56,12 @@ async function fetchWithTimeout(
 }
 
 /**
- * Chzzk OAuth 토큰 발급
+ * Chzzk OAuth 토큰 발급 (TODO: OAuth 구현 시 사용)
  */
-async function getAccessToken(): Promise<string> {
+async function _getAccessToken(): Promise<string> {
   // 캐시된 토큰이 유효하면 재사용
-  if (cachedToken && Date.now() < cachedToken.expiresAt - 60000) {
-    return cachedToken.token;
+  if (_cachedToken && Date.now() < _cachedToken.expiresAt - 60000) {
+    return _cachedToken.token;
   }
 
   const response = await fetchWithTimeout(
@@ -91,12 +91,12 @@ async function getAccessToken(): Promise<string> {
     throw new Error(`Chzzk token error: ${data.message}`);
   }
 
-  cachedToken = {
+  _cachedToken = {
     token: data.content.accessToken,
     expiresAt: Date.now() + (data.content.expiresIn || 3600) * 1000,
   };
 
-  return cachedToken.token;
+  return _cachedToken.token;
 }
 
 /**

@@ -49,6 +49,8 @@ export function ScenarioSimulator({
   const [inputs, setInputs] = useState<ScenarioInput>({});
   const [result, setResult] = useState<SimulationResult | null>(null);
   const [loading, setLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'config' | 'result'>('config');
 
   const handleTemplateSelect = (template: ScenarioTemplate) => {
@@ -61,6 +63,7 @@ export function ScenarioSimulator({
     if (!inputs || Object.keys(inputs).length === 0) return;
 
     setLoading(true);
+    setError(null);
     try {
       if (onSimulate) {
         const simResult = await onSimulate(inputs);
@@ -77,10 +80,13 @@ export function ScenarioSimulator({
         if (data.success) {
           setResult(data.data.result);
           setActiveTab('result');
+        } else {
+          setError(data.error || '시뮬레이션에 실패했습니다');
         }
       }
-    } catch (error) {
-      console.error('Simulation error:', error);
+    } catch (err) {
+      console.error('Simulation error:', err);
+      setError(err instanceof Error ? err.message : '시뮬레이션 중 오류가 발생했습니다');
     } finally {
       setLoading(false);
     }

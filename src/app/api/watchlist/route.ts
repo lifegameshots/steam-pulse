@@ -100,6 +100,7 @@ export async function POST(request: NextRequest) {
           update_news: true,
           rating_change: 10,
         },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)  // 타입 단언 추가
       .select()
       .single();

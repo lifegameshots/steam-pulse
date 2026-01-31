@@ -24,6 +24,31 @@ interface CCUChartProps {
   showArea?: boolean;
 }
 
+// Tooltip 컴포넌트를 외부로 분리
+interface TooltipPayload {
+  value: number;
+}
+
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: TooltipPayload[];
+  label?: string;
+}
+
+function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background border rounded-lg shadow-lg p-3">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="text-lg font-bold text-primary">
+          {formatNumber(payload[0].value)} 명
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
+
 export function CCUChart({ data, height = 300, showArea = true }: CCUChartProps) {
   if (!data || data.length === 0) {
     return (
@@ -43,20 +68,6 @@ export function CCUChart({ data, height = 300, showArea = true }: CCUChartProps)
   // Y축 범위 계산 (여유 있게)
   const yMin = Math.max(0, minCCU - (maxCCU - minCCU) * 0.1);
   const yMax = maxCCU + (maxCCU - minCCU) * 0.1;
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-background border rounded-lg shadow-lg p-3">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-lg font-bold text-primary">
-            {formatNumber(payload[0].value)} 명
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   if (showArea) {
     return (

@@ -139,7 +139,7 @@ export function ReviewMatrixPanel({
       <Card>
         <CardContent className="py-8 text-center text-gray-500">
           <Youtube className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>"{gameName}"에 대한 YouTube 리뷰를 찾을 수 없습니다</p>
+          <p>&quot;{gameName}&quot;에 대한 YouTube 리뷰를 찾을 수 없습니다</p>
         </CardContent>
       </Card>
     );

@@ -167,7 +167,7 @@ export default function WishlistAnalysisPage() {
       default:
         return games.sort((a, b) => b.popularity - a.popularity);
     }
-  }, [analysisData?.games, sortBy]);
+  }, [analysisData, sortBy]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -305,7 +305,7 @@ export default function WishlistAnalysisPage() {
           {activeSearch && searchResults && (
             <div className="mt-4 space-y-2">
               <p className="text-sm text-muted-foreground">
-                "{activeSearch}" 검색 결과: {searchResults.total}개
+                &quot;{activeSearch}&quot; 검색 결과: {searchResults.total}개
               </p>
               {searchResults.items.slice(0, 5).map((item) => (
                 <Link

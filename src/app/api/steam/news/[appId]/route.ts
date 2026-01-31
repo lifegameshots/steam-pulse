@@ -32,6 +32,7 @@ export async function GET(
     const newsItems = data.appnews?.newsitems || [];
 
     // 뉴스 정리
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const news = newsItems.map((item: any) => ({
       id: item.gid,
       title: item.title,

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useIGDBGame } from '@/hooks/useSteamData';
 import { getImageUrl, IGDBGame } from '@/lib/igdb';
-import { Sparkles, Star, ExternalLink, ArrowRight } from 'lucide-react';
+import { Sparkles, Star, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface SimilarGamesPanelProps {
@@ -22,16 +22,7 @@ function SimilarGameCard({ game }: { game: IGDBGame }) {
     ? getImageUrl(game.cover.image_id, 'cover_big')
     : '/images/no-image.png';
 
-  const CardWrapper = steamId
-    ? ({ children }: { children: React.ReactNode }) => (
-        <Link href={`/game/${steamId}`} className="block">
-          {children}
-        </Link>
-      )
-    : ({ children }: { children: React.ReactNode }) => <>{children}</>;
-
-  return (
-    <CardWrapper>
+  const content = (
       <div className={`group relative bg-gray-800/50 rounded-lg overflow-hidden border border-gray-700/50 ${steamId ? 'hover:border-purple-500/50 hover:bg-gray-700/50 transition-all cursor-pointer' : ''}`}>
         <div className="relative aspect-[3/4] overflow-hidden">
           <img
@@ -74,8 +65,17 @@ function SimilarGameCard({ game }: { game: IGDBGame }) {
           )}
         </div>
       </div>
-    </CardWrapper>
   );
+
+  if (steamId) {
+    return (
+      <Link href={`/game/${steamId}`} className="block">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 }
 
 export function SimilarGamesPanel({ appId, gameName }: SimilarGamesPanelProps) {

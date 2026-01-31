@@ -107,7 +107,7 @@ function HighlightsCard({
                 const info = FUN_CATEGORY_INFO[h.category];
                 return (
                   <div key={i} className="bg-green-50 dark:bg-green-950/30 rounded-lg p-3 border-l-4 border-green-500">
-                    <p className="text-sm text-gray-700 dark:text-gray-300 italic">"{h.quote}"</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 italic">&quot;{h.quote}&quot;</p>
                     <div className="flex items-center gap-2 mt-2">
                       <Badge variant="outline" className="text-xs">
                         {info.icon} {info.name}
@@ -133,7 +133,7 @@ function HighlightsCard({
                 const info = FUN_CATEGORY_INFO[h.category];
                 return (
                   <div key={i} className="bg-red-50 dark:bg-red-950/30 rounded-lg p-3 border-l-4 border-red-500">
-                    <p className="text-sm text-gray-700 dark:text-gray-300 italic">"{h.quote}"</p>
+                    <p className="text-sm text-gray-700 dark:text-gray-300 italic">&quot;{h.quote}&quot;</p>
                     <div className="flex items-center gap-2 mt-2">
                       <Badge variant="outline" className="text-xs">
                         {info.icon} {info.name}

@@ -20,7 +20,7 @@ import {
   Edit2,
   Archive,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -33,7 +33,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { PROJECT_TYPE_INFO, PROJECT_STATUS_INFO } from '@/types/project';
-import type { Project, ProjectGame } from '@/types/project';
+import type { Project } from '@/types/project';
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -79,8 +79,11 @@ export default function ProjectDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(game),
       });
-      if (!res.ok) throw new Error('Failed to add game');
-      return res.json();
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to add game');
+      }
+      return json;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
@@ -95,8 +98,11 @@ export default function ProjectDetailPage() {
       const res = await fetch(`/api/projects/${projectId}/games/${appId}`, {
         method: 'DELETE',
       });
-      if (!res.ok) throw new Error('Failed to remove game');
-      return res.json();
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to remove game');
+      }
+      return json;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', projectId] });
@@ -274,8 +280,21 @@ export default function ProjectDetailPage() {
                   onChange={(e) => setGameSearchQuery(e.target.value)}
                   className="pl-9 bg-slate-800 border-slate-600"
                   autoFocus
+                  disabled={addGameMutation.isPending}
                 />
               </div>
+              {/* 에러 메시지 */}
+              {addGameMutation.isError && (
+                <div className="mb-3 p-2 bg-red-500/20 border border-red-500/30 rounded text-red-400 text-sm">
+                  {addGameMutation.error instanceof Error
+                    ? addGameMutation.error.message
+                    : '게임 추가에 실패했습니다'}
+                </div>
+              )}
+              {/* 로딩 상태 */}
+              {addGameMutation.isPending && (
+                <p className="text-indigo-400 text-sm mb-3">게임 추가 중...</p>
+              )}
               {isSearching && <p className="text-slate-400 text-sm">검색 중...</p>}
               {searchResults && searchResults.length > 0 && (
                 <div className="space-y-2 max-h-60 overflow-y-auto">
@@ -289,7 +308,8 @@ export default function ProjectDetailPage() {
                           headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
                         })
                       }
-                      className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors text-left"
+                      disabled={addGameMutation.isPending}
+                      className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-slate-800 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Image
                         src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}

@@ -49,6 +49,7 @@ export async function GET(
         finalFormatted: data.price_overview.final_formatted,
       } : null,
       releaseDate: data.release_date,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       genres: data.genres?.map((g: any) => g.description) || [],
       metacritic: data.metacritic,
       reviews: reviews?.query_summary ? {
