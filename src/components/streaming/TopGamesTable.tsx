@@ -21,6 +21,11 @@ interface TopGame {
   viewers: number;
   streams: number;
   change24h: number;
+  // 플랫폼별 데이터
+  twitchViewers?: number;
+  twitchStreams?: number;
+  chzzkViewers?: number;
+  chzzkStreams?: number;
 }
 
 interface TopGamesTableProps {
@@ -74,9 +79,15 @@ export function TopGamesTable({ games }: TopGamesTableProps) {
                     className="text-slate-400 hover:text-white"
                   >
                     <Users className="w-4 h-4 mr-1" />
-                    시청자
+                    총 시청자
                     <ArrowUpDown className="w-3 h-3 ml-1" />
                   </Button>
+                </th>
+                <th className="py-3 px-2 text-center">
+                  <span className="text-purple-400 text-sm font-medium">Twitch</span>
+                </th>
+                <th className="py-3 px-2 text-center">
+                  <span className="text-green-400 text-sm font-medium">Chzzk</span>
                 </th>
                 <th className="py-3 px-2">
                   <Button
@@ -129,6 +140,26 @@ export function TopGamesTable({ games }: TopGamesTableProps) {
                     <span className="text-white font-medium">
                       {formatNumber(game.viewers)}
                     </span>
+                  </td>
+                  <td className="py-3 px-2 text-center">
+                    <div className="flex flex-col items-center">
+                      <span className="text-purple-300 font-medium">
+                        {formatNumber(game.twitchViewers || 0)}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {game.twitchStreams || 0}개
+                      </span>
+                    </div>
+                  </td>
+                  <td className="py-3 px-2 text-center">
+                    <div className="flex flex-col items-center">
+                      <span className="text-green-300 font-medium">
+                        {formatNumber(game.chzzkViewers || 0)}
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        {game.chzzkStreams || 0}개
+                      </span>
+                    </div>
                   </td>
                   <td className="py-3 px-2 text-center">
                     <span className="text-slate-300">{game.streams}</span>

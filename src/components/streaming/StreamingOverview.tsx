@@ -9,10 +9,23 @@ interface StreamingOverviewProps {
     totalLiveStreams: number;
     viewerChange24h: number;
     streamChange24h: number;
+    twitch?: {
+      viewers: number;
+      streams: number;
+    };
+    chzzk?: {
+      viewers: number;
+      streams: number;
+    };
   };
 }
 
 export function StreamingOverview({ data }: StreamingOverviewProps) {
+  const twitchViewers = data.twitch?.viewers ?? 0;
+  const twitchStreams = data.twitch?.streams ?? 0;
+  const chzzkViewers = data.chzzk?.viewers ?? 0;
+  const chzzkStreams = data.chzzk?.streams ?? 0;
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       <StatCard
@@ -28,16 +41,16 @@ export function StreamingOverview({ data }: StreamingOverviewProps) {
         change={data.streamChange24h}
       />
       <StatCard
-        icon={<Radio className="w-5 h-5 text-red-400" />}
+        icon={<Radio className="w-5 h-5 text-purple-500" />}
         label="Twitch"
-        value="실시간"
-        sublabel="연동됨"
+        value={formatNumber(twitchViewers)}
+        sublabel={`${twitchStreams}개 방송`}
       />
       <StatCard
-        icon={<Radio className="w-5 h-5 text-green-400" />}
+        icon={<Radio className="w-5 h-5 text-green-500" />}
         label="Chzzk"
-        value="실시간"
-        sublabel="연동됨"
+        value={formatNumber(chzzkViewers)}
+        sublabel={`${chzzkStreams}개 방송`}
       />
     </div>
   );

@@ -120,6 +120,8 @@ export async function getDashboardData(): Promise<StreamingDashboardData> {
           totalLiveStreams: 0,
           viewerChange24h: 0,
           streamChange24h: 0,
+          twitch: { viewers: 0, streams: 0 },
+          chzzk: { viewers: 0, streams: 0 },
         },
         topGames: [],
         topStreamers: [],
@@ -138,21 +140,54 @@ export async function getDashboardData(): Promise<StreamingDashboardData> {
           [[], []] // 타임아웃 시 빈 배열
         );
 
-        // 인기 게임 합산
-        const gameMap = new Map<string, { viewers: number; streams: number }>();
+        // 플랫폼별 총계
+        let twitchTotalViewers = 0;
+        let twitchTotalStreams = 0;
+        let chzzkTotalViewers = 0;
+        let chzzkTotalStreams = 0;
+
+        // 인기 게임 합산 (플랫폼별 데이터 추적)
+        const gameMap = new Map<string, {
+          viewers: number;
+          streams: number;
+          twitchViewers: number;
+          twitchStreams: number;
+          chzzkViewers: number;
+          chzzkStreams: number;
+        }>();
 
         twitchTop.forEach(item => {
-          const existing = gameMap.get(item.game.name) || { viewers: 0, streams: 0 };
+          const existing = gameMap.get(item.game.name) || {
+            viewers: 0, streams: 0,
+            twitchViewers: 0, twitchStreams: 0,
+            chzzkViewers: 0, chzzkStreams: 0,
+          };
           existing.viewers += item.viewerCount;
           existing.streams += item.streamCount;
+          existing.twitchViewers += item.viewerCount;
+          existing.twitchStreams += item.streamCount;
           gameMap.set(item.game.name, existing);
+
+          // 플랫폼 총계
+          twitchTotalViewers += item.viewerCount;
+          twitchTotalStreams += item.streamCount;
         });
 
         chzzkTop.forEach(item => {
-          const existing = gameMap.get(item.categoryName) || { viewers: 0, streams: 0 };
+          const existing = gameMap.get(item.categoryName) || {
+            viewers: 0, streams: 0,
+            twitchViewers: 0, twitchStreams: 0,
+            chzzkViewers: 0, chzzkStreams: 0,
+          };
           existing.viewers += item.viewerCount;
           existing.streams += item.streamCount;
+          existing.chzzkViewers += item.viewerCount;
+          existing.chzzkStreams += item.streamCount;
           gameMap.set(item.categoryName, existing);
+
+          // 플랫폼 총계
+          chzzkTotalViewers += item.viewerCount;
+          chzzkTotalStreams += item.streamCount;
         });
 
         const topGames = Array.from(gameMap.entries())
@@ -161,13 +196,17 @@ export async function getDashboardData(): Promise<StreamingDashboardData> {
             viewers: data.viewers,
             streams: data.streams,
             change24h: 0, // 히스토리 데이터 필요
+            twitchViewers: data.twitchViewers,
+            twitchStreams: data.twitchStreams,
+            chzzkViewers: data.chzzkViewers,
+            chzzkStreams: data.chzzkStreams,
           }))
           .sort((a, b) => b.viewers - a.viewers)
           .slice(0, 20);
 
         // 총 시청자/스트림 계산
-        const totalViewers = topGames.reduce((sum, g) => sum + g.viewers, 0);
-        const totalStreams = topGames.reduce((sum, g) => sum + g.streams, 0);
+        const totalViewers = twitchTotalViewers + chzzkTotalViewers;
+        const totalStreams = twitchTotalStreams + chzzkTotalStreams;
 
         return {
           overview: {
@@ -175,6 +214,14 @@ export async function getDashboardData(): Promise<StreamingDashboardData> {
             totalLiveStreams: totalStreams,
             viewerChange24h: 0,
             streamChange24h: 0,
+            twitch: {
+              viewers: twitchTotalViewers,
+              streams: twitchTotalStreams,
+            },
+            chzzk: {
+              viewers: chzzkTotalViewers,
+              streams: chzzkTotalStreams,
+            },
           },
           topGames,
           topStreamers: [], // 별도 구현 필요

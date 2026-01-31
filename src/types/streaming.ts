@@ -135,6 +135,15 @@ export interface StreamingDashboardData {
     totalLiveStreams: number;
     viewerChange24h: number; // 퍼센트
     streamChange24h: number;
+    // 플랫폼별 데이터
+    twitch: {
+      viewers: number;
+      streams: number;
+    };
+    chzzk: {
+      viewers: number;
+      streams: number;
+    };
   };
   topGames: Array<{
     gameName: string;
@@ -142,6 +151,11 @@ export interface StreamingDashboardData {
     viewers: number;
     streams: number;
     change24h: number;
+    // 플랫폼별 데이터
+    twitchViewers?: number;
+    twitchStreams?: number;
+    chzzkViewers?: number;
+    chzzkStreams?: number;
   }>;
   topStreamers: Array<{
     streamer: StreamerInfo;
