@@ -113,7 +113,7 @@ export default function GameLabPage() {
         <CardContent>
           {selectedGame ? (
             // 선택된 게임 표시
-            <div className="flex items-center gap-4 p-4 bg-cyan-50 dark:bg-cyan-950/30 rounded-lg border border-cyan-200 dark:border-cyan-800">
+            <div className="flex items-center gap-4 p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/30">
               {selectedGame.headerImage && (
                 <img
                   src={selectedGame.headerImage}
@@ -122,9 +122,9 @@ export default function GameLabPage() {
                 />
               )}
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-lg truncate text-gray-900 dark:text-white">{selectedGame.name}</h3>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                  <Badge variant="outline">App ID: {selectedGame.appId}</Badge>
+                <h3 className="font-bold text-lg truncate text-white">{selectedGame.name}</h3>
+                <div className="flex items-center gap-2 text-sm text-slate-400 mt-1">
+                  <Badge variant="outline" className="border-cyan-500/50 text-cyan-300">App ID: {selectedGame.appId}</Badge>
                   {selectedGame.price && <span>{selectedGame.price}</span>}
                 </div>
               </div>
@@ -308,24 +308,24 @@ export default function GameLabPage() {
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 max-w-2xl mx-auto">
-              <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg">
-                <Sparkles className="h-8 w-8 mx-auto text-indigo-500 mb-2" />
-                <h4 className="font-medium text-sm">MDA 디자인 분석</h4>
-                <p className="text-xs text-muted-foreground mt-1">
+              <div className="p-4 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
+                <Sparkles className="h-8 w-8 mx-auto text-indigo-400 mb-2" />
+                <h4 className="font-medium text-sm text-indigo-300">MDA 디자인 분석</h4>
+                <p className="text-xs text-slate-400 mt-1">
                   Mechanics/Dynamics/Aesthetics 프레임워크로 게임 디자인 품질 측정
                 </p>
               </div>
-              <div className="p-4 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
-                <Gamepad2 className="h-8 w-8 mx-auto text-orange-500 mb-2" />
-                <h4 className="font-medium text-sm">핵심 재미 분석</h4>
-                <p className="text-xs text-muted-foreground mt-1">
+              <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                <Gamepad2 className="h-8 w-8 mx-auto text-orange-400 mb-2" />
+                <h4 className="font-medium text-sm text-orange-300">핵심 재미 분석</h4>
+                <p className="text-xs text-slate-400 mt-1">
                   리뷰 기반 6가지 재미 카테고리 점수 및 하이라이트 추출
                 </p>
               </div>
-              <div className="p-4 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
-                <Users className="h-8 w-8 mx-auto text-purple-500 mb-2" />
-                <h4 className="font-medium text-sm">유저 페르소나</h4>
-                <p className="text-xs text-muted-foreground mt-1">
+              <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                <Users className="h-8 w-8 mx-auto text-purple-400 mb-2" />
+                <h4 className="font-medium text-sm text-purple-300">유저 페르소나</h4>
+                <p className="text-xs text-slate-400 mt-1">
                   Player Spectrum 모델로 유저 구성과 마케팅 전략 제안
                 </p>
               </div>

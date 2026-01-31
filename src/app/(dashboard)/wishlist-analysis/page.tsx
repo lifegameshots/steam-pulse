@@ -260,20 +260,20 @@ export default function WishlistAnalysisPage() {
       </div>
 
       {/* 위시리스트란? 설명 카드 */}
-      <Card className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-950/20 dark:to-purple-950/20 border-pink-200 dark:border-pink-800">
+      <Card className="bg-pink-500/10 border-pink-500/30">
         <CardContent className="pt-4 px-4 sm:px-6">
           <div className="flex items-start gap-3">
-            <Info className="h-5 w-5 text-pink-500 flex-shrink-0 mt-0.5" />
+            <Info className="h-5 w-5 text-pink-400 flex-shrink-0 mt-0.5" />
             <div className="text-sm">
-              <p className="font-medium mb-1">위시리스트 분석이란?</p>
-              <p className="text-muted-foreground">
-                Steam의 <strong className="text-foreground">Top Sellers</strong>,
-                <strong className="text-foreground"> New Releases</strong>,
-                <strong className="text-foreground"> Specials</strong> 데이터를 기반으로
+              <p className="font-medium mb-1 text-pink-300">위시리스트 분석이란?</p>
+              <p className="text-slate-300">
+                Steam의 <strong className="text-white">Top Sellers</strong>,
+                <strong className="text-white"> New Releases</strong>,
+                <strong className="text-white"> Specials</strong> 데이터를 기반으로
                 게임의 인기도와 추정 위시리스트를 분석합니다.
               </p>
-              <p className="text-muted-foreground mt-2">
-                <strong className="text-foreground">참고:</strong> Steam은 공식 위시리스트 API를 제공하지 않아
+              <p className="text-slate-400 mt-2">
+                <strong className="text-slate-200">참고:</strong> Steam은 공식 위시리스트 API를 제공하지 않아
                 인기 순위와 판매 데이터를 기반으로 추정합니다.
               </p>
             </div>

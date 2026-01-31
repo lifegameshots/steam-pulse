@@ -92,7 +92,7 @@ export default function YouTubeLabPage() {
         </CardHeader>
         <CardContent>
           {selectedGame ? (
-            <div className="flex items-center gap-4 p-4 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800">
+            <div className="flex items-center gap-4 p-4 bg-red-500/10 rounded-lg border border-red-500/30">
               {selectedGame.headerImage && (
                 <img
                   src={selectedGame.headerImage}
@@ -101,8 +101,8 @@ export default function YouTubeLabPage() {
                 />
               )}
               <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-lg truncate text-gray-900 dark:text-white">{selectedGame.name}</h3>
-                <Badge variant="outline">App ID: {selectedGame.appId}</Badge>
+                <h3 className="font-bold text-lg truncate text-white">{selectedGame.name}</h3>
+                <Badge variant="outline" className="border-red-500/50 text-red-300">App ID: {selectedGame.appId}</Badge>
               </div>
               <Button variant="ghost" size="sm" onClick={handleClearGame}>
                 다른 게임 선택
@@ -226,24 +226,24 @@ export default function YouTubeLabPage() {
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 max-w-2xl mx-auto">
-              <div className="p-4 bg-red-50 dark:bg-red-950/30 rounded-lg">
-                <TrendingUp className="h-8 w-8 mx-auto text-red-500 mb-2" />
-                <h4 className="font-medium text-sm">감정 분석</h4>
-                <p className="text-xs text-muted-foreground mt-1">
+              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <TrendingUp className="h-8 w-8 mx-auto text-red-400 mb-2" />
+                <h4 className="font-medium text-sm text-red-300">감정 분석</h4>
+                <p className="text-xs text-slate-400 mt-1">
                   긍정/부정/중립 리뷰 비율 및 시간별 트렌드
                 </p>
               </div>
-              <div className="p-4 bg-purple-50 dark:bg-purple-950/30 rounded-lg">
-                <Users className="h-8 w-8 mx-auto text-purple-500 mb-2" />
-                <h4 className="font-medium text-sm">인플루언서 분석</h4>
-                <p className="text-xs text-muted-foreground mt-1">
+              <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+                <Users className="h-8 w-8 mx-auto text-purple-400 mb-2" />
+                <h4 className="font-medium text-sm text-purple-300">인플루언서 분석</h4>
+                <p className="text-xs text-slate-400 mt-1">
                   채널 규모별 분류 및 핵심 인플루언서 식별
                 </p>
               </div>
-              <div className="p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-                <Eye className="h-8 w-8 mx-auto text-blue-500 mb-2" />
-                <h4 className="font-medium text-sm">토픽 분석</h4>
-                <p className="text-xs text-muted-foreground mt-1">
+              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <Eye className="h-8 w-8 mx-auto text-blue-400 mb-2" />
+                <h4 className="font-medium text-sm text-blue-300">토픽 분석</h4>
+                <p className="text-xs text-slate-400 mt-1">
                   자주 언급되는 강점과 약점 토픽 추출
                 </p>
               </div>

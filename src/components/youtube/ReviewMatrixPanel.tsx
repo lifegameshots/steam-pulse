@@ -247,15 +247,15 @@ function ScoreCard({
   badge?: boolean;
 }) {
   return (
-    <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-      <p className="text-xs text-gray-500 mb-1">{label}</p>
+    <div className="text-center p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+      <p className="text-xs text-slate-400 mb-1">{label}</p>
       <div className="flex items-center justify-center gap-1">
         {badge ? (
           <Badge variant="outline">{value}</Badge>
         ) : (
-          <span className="text-xl font-bold">
+          <span className="text-xl font-bold text-white">
             {value}
-            {suffix && <span className="text-sm font-normal text-gray-400">{suffix}</span>}
+            {suffix && <span className="text-sm font-normal text-slate-400">{suffix}</span>}
           </span>
         )}
         {trend && (
@@ -337,12 +337,12 @@ function OverviewTab({
             ))}
 
             {combinedInsights?.recommendations.length > 0 && (
-              <div className="pt-3 border-t">
-                <p className="text-xs text-gray-500 mb-2">추천 사항</p>
+              <div className="pt-3 border-t border-slate-700">
+                <p className="text-xs text-slate-400 mb-2">추천 사항</p>
                 {combinedInsights.recommendations.slice(0, 2).map((rec, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2" />
-                    <p className="text-sm text-gray-600">{rec}</p>
+                    <p className="text-sm text-slate-300">{rec}</p>
                   </div>
                 ))}
               </div>
@@ -359,12 +359,12 @@ function OverviewTab({
         <CardContent>
           <div className="grid md:grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-gray-500 mb-2">강점</p>
+              <p className="text-xs text-slate-400 mb-2">강점</p>
               <div className="space-y-2">
                 {gameEvaluation?.mostMentionedStrengths.slice(0, 5).map((item, i) => (
                   <div key={i} className="flex items-center justify-between">
-                    <span className="text-sm capitalize">{item.topic}</span>
-                    <Badge variant="outline" className="text-green-600">
+                    <span className="text-sm capitalize text-slate-200">{item.topic}</span>
+                    <Badge variant="outline" className="text-green-400 border-green-500/50">
                       {item.count}회
                     </Badge>
                   </div>
@@ -372,12 +372,12 @@ function OverviewTab({
               </div>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-2">약점/이슈</p>
+              <p className="text-xs text-slate-400 mb-2">약점/이슈</p>
               <div className="space-y-2">
                 {gameEvaluation?.mostMentionedWeaknesses.slice(0, 5).map((item, i) => (
                   <div key={i} className="flex items-center justify-between">
-                    <span className="text-sm capitalize">{item.topic}</span>
-                    <Badge variant="outline" className="text-orange-600">
+                    <span className="text-sm capitalize text-slate-200">{item.topic}</span>
+                    <Badge variant="outline" className="text-orange-400 border-orange-500/50">
                       {item.count}회
                     </Badge>
                   </div>
@@ -432,11 +432,11 @@ function VideoListTab({ videos }: { videos: AnalyzedVideo[] }) {
                   {video.title}
                 </a>
 
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-slate-400 mt-1">
                   {video.channelTitle}
                 </p>
 
-                <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">
+                <div className="flex items-center gap-4 mt-2 text-xs text-slate-400">
                   <span className="flex items-center gap-1">
                     <Eye className="w-3 h-3" />
                     {formatViewCount(video.viewCount)}
@@ -541,13 +541,13 @@ function ChannelAnalysisTab({ crossAnalysis }: { crossAnalysis: CrossAnalysisRes
             {keyInfluencers.slice(0, 5).map((influencer, i) => (
               <div
                 key={influencer.channelId}
-                className="flex items-center justify-between p-2 rounded-lg bg-gray-50 dark:bg-gray-800"
+                className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700"
               >
                 <div className="flex items-center gap-3">
-                  <span className="text-lg font-bold text-gray-400">#{i + 1}</span>
+                  <span className="text-lg font-bold text-slate-400">#{i + 1}</span>
                   <div>
-                    <p className="font-medium">{influencer.channelName}</p>
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <p className="font-medium text-white">{influencer.channelName}</p>
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
                       <Badge
                         variant="outline"
                         style={{ borderColor: TIER_COLORS[influencer.tier] }}
@@ -562,15 +562,15 @@ function ChannelAnalysisTab({ crossAnalysis }: { crossAnalysis: CrossAnalysisRes
                   <Badge
                     variant="outline"
                     className={
-                      influencer.sentiment === 'positive' ? 'text-green-600' :
-                      influencer.sentiment === 'negative' ? 'text-red-600' :
-                      'text-gray-600'
+                      influencer.sentiment === 'positive' ? 'text-green-400 border-green-500/50' :
+                      influencer.sentiment === 'negative' ? 'text-red-400 border-red-500/50' :
+                      'text-slate-400 border-slate-500/50'
                     }
                   >
                     {influencer.sentiment === 'positive' ? '긍정' :
                      influencer.sentiment === 'negative' ? '부정' : '중립'}
                   </Badge>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     영향력 {influencer.influence}점
                   </p>
                 </div>
@@ -621,7 +621,7 @@ function TrendsTab({ crossAnalysis }: { crossAnalysis: CrossAnalysisResult | nul
         <CardContent>
           <div className="flex items-center gap-2 mb-4">
             <Badge className={trendInfo.color}>{trendInfo.text}</Badge>
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-slate-400">
               최근 {periods.length}개월 분석 기준
             </span>
           </div>
@@ -663,10 +663,10 @@ function TrendsTab({ crossAnalysis }: { crossAnalysis: CrossAnalysisResult | nul
             {periods.slice(-6).reverse().map((period, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between p-2 rounded bg-gray-50 dark:bg-gray-800"
+                className="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700"
               >
                 <div>
-                  <p className="font-medium">{period.startDate.slice(0, 7)}</p>
+                  <p className="font-medium text-white">{period.startDate.slice(0, 7)}</p>
                   <div className="flex gap-1 mt-1">
                     {period.topTopics.map(topic => (
                       <Badge key={topic} variant="outline" className="text-xs">
