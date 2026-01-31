@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ReportViewer } from '@/components/reports/ReportViewer';
 import { FeatureGuideModal } from '@/components/ui/FeatureGuideModal';
+import { CreateReportDialog } from '@/components/reports/CreateReportDialog';
 import {
   FileText,
   Download,
@@ -63,6 +64,7 @@ const reportGuideSteps = [
 export default function ReportsPage() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [filterType, setFilterType] = useState<ReportType | 'all'>('all');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const { data: reportsData, isLoading } = useQuery({
     queryKey: ['reports'],
@@ -127,7 +129,10 @@ export default function ReportsPage() {
             ))}
           </select>
         </div>
-        <Button className="bg-indigo-600 hover:bg-indigo-700">
+        <Button
+          onClick={() => setIsCreateDialogOpen(true)}
+          className="bg-indigo-600 hover:bg-indigo-700"
+        >
           <Plus className="w-4 h-4 mr-2" />
           새 리포트 생성
         </Button>
@@ -213,13 +218,22 @@ export default function ReportsPage() {
               아직 생성된 리포트가 없습니다.<br />
               새 리포트를 생성하여 시장 분석을 시작하세요.
             </p>
-            <Button className="mt-4 bg-indigo-600 hover:bg-indigo-700">
+            <Button
+              onClick={() => setIsCreateDialogOpen(true)}
+              className="mt-4 bg-indigo-600 hover:bg-indigo-700"
+            >
               <Plus className="w-4 h-4 mr-2" />
               첫 리포트 생성하기
             </Button>
           </CardContent>
         </Card>
       )}
+
+      {/* 리포트 생성 다이얼로그 */}
+      <CreateReportDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+      />
     </div>
   );
 }
