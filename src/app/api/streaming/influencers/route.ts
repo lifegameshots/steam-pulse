@@ -182,7 +182,7 @@ export async function GET(request: NextRequest) {
         platformId: streamer.platform_id,
         displayName: streamer.display_name,
         profileImage: streamer.profile_image_url || undefined,
-        followerCount: streamer.follower_count,
+        followerCount: streamer.follower_count ?? 0,
         language: streamer.language || undefined,
         avgViewers,
         recentGames,
