@@ -145,8 +145,8 @@ export function CreateProjectDialog({ trigger, onSuccess }: CreateProjectDialogP
                     onClick={() => setType(key)}
                     className={`p-3 rounded-lg border text-left transition-colors ${
                       type === key
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                        : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/50 text-blue-700 dark:text-blue-100'
+                        : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-gray-100'
                     }`}
                   >
                     <span className="text-xl mr-2">{info.icon}</span>
