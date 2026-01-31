@@ -40,8 +40,8 @@ export async function GET(request: NextRequest) {
     console.log(`[Cron] Aggregating data for ${targetDate}`);
 
     // 1. PostgreSQL 함수로 일별 집계 실행
-    const { data: aggregateResult, error: aggregateError } = await supabase
-      .rpc('aggregate_streaming_daily_stats', { p_date: targetDate });
+    const { data: aggregateResult, error: aggregateError } = await (supabase as any)
+      .rpc('aggregate_streaming_daily_stats', { p_date: targetDate }) as { data: number | null; error: any };
 
     if (aggregateError) {
       console.error('[Cron] Aggregate function error:', aggregateError);
