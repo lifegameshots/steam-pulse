@@ -276,40 +276,23 @@ async function fetchUserEventsFromDB(
     }
 
     // DB 결과를 CalendarEvent 형식으로 변환
-    return (data || []).map((row: {
-      id: string;
-      title: string;
-      description: string | null;
-      type: string;
-      importance: string;
-      status: string;
-      start_date: string;
-      end_date: string | null;
-      is_all_day: boolean;
-      app_id: string | null;
-      game_name: string | null;
-      source: string;
-      source_url: string | null;
-      tags: string[] | null;
-      created_at: string;
-      updated_at: string;
-    }) => ({
+    return (data || []).map((row) => ({
       id: row.id,
       title: row.title,
       description: row.description || undefined,
       type: row.type as CalendarEventType,
-      importance: row.importance as EventImportance,
-      status: row.status as 'scheduled' | 'confirmed' | 'cancelled' | 'completed',
+      importance: (row.importance || 'medium') as EventImportance,
+      status: (row.status || 'scheduled') as 'scheduled' | 'confirmed' | 'cancelled' | 'completed',
       startDate: row.start_date,
       endDate: row.end_date || undefined,
-      isAllDay: row.is_all_day,
+      isAllDay: row.is_all_day ?? false,
       appId: row.app_id || undefined,
       gameName: row.game_name || undefined,
-      source: row.source as 'steam' | 'api' | 'user' | 'scrape',
+      source: (row.source || 'user') as 'steam' | 'api' | 'user' | 'scrape',
       sourceUrl: row.source_url || undefined,
       tags: row.tags || undefined,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
+      createdAt: row.created_at || new Date().toISOString(),
+      updatedAt: row.updated_at || new Date().toISOString(),
     }));
   } catch (error) {
     console.error('Error fetching user events:', error);
