@@ -18,6 +18,7 @@ import { PageHeader } from '@/components/layout/PageHeader';
 import { StreamingOverview } from '@/components/streaming/StreamingOverview';
 import { TopGamesTable } from '@/components/streaming/TopGamesTable';
 import { LiveStreamList } from '@/components/streaming/LiveStreamList';
+import { KRDashboardPanel } from '@/components/streaming/KRDashboardPanel';
 import { EmptyState, ErrorState } from '@/components/ui/data-states';
 import type { StreamingDashboardData } from '@/types/streaming';
 
@@ -240,6 +241,9 @@ export default function StreamingPage() {
         <>
           {/* 개요 통계 */}
           <StreamingOverview data={dashboard.overview} />
+
+          {/* 한국 시장 대시보드 (치지직) */}
+          <KRDashboardPanel />
 
           {/* 인기 게임 */}
           <TopGamesTable games={dashboard.topGames} />
