@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Star, Trash2, ExternalLink, Bell, BellOff, LogIn } from 'lucide-react';
+import { Star, Trash2, ExternalLink, Bell, BellOff, LogIn, Plus, Search, Settings } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,30 @@ import { formatDate } from '@/lib/utils/formatters';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { BasketAnalysisPanel } from '@/components/watchlist/BasketAnalysisPanel';
 import { EmptyState, ErrorState } from '@/components/ui/data-states';
+import { FeatureGuideModal } from '@/components/ui/FeatureGuideModal';
+
+const watchlistGuideSteps = [
+  {
+    title: '게임 추가하기',
+    description: '관심 있는 게임의 상세 페이지에서 별(★) 버튼을 클릭하여 관심 목록에 추가하세요.\n\n또는 상단 검색창에서 게임을 검색한 후 추가할 수 있습니다.',
+    icon: <Plus className="w-6 h-6" />,
+  },
+  {
+    title: '게임 추적하기',
+    description: '추가된 게임들의 CCU, 가격, 리뷰 변동을 한눈에 확인하세요.\n\n게임 카드를 클릭하면 상세 페이지로 이동합니다.',
+    icon: <Search className="w-6 h-6" />,
+  },
+  {
+    title: '알림 설정하기',
+    description: '각 게임마다 알림 조건을 설정할 수 있습니다:\n\n• CCU 급등/급락 알림\n• 가격 변동 알림\n• 업데이트 소식 알림',
+    icon: <Bell className="w-6 h-6" />,
+  },
+  {
+    title: '바스켓 분석 활용하기',
+    description: '관심 목록에 추가된 게임들을 함께 분석하세요.\n\n장르별 트렌드, 가격대 분포, CCU 비교 등 유용한 인사이트를 제공합니다.',
+    icon: <Settings className="w-6 h-6" />,
+  },
+];
 
 export default function WatchlistPage() {
   const {
@@ -28,12 +52,20 @@ export default function WatchlistPage() {
   if (isAuthError) {
     return (
       <div className="space-y-6">
-        <PageHeader
-          title="관심 목록"
-          description="관심 게임을 추가하고 추적하세요"
-          icon={<Star className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 fill-yellow-500" />}
-          pageName="관심 목록"
-        />
+        <div className="flex items-center justify-between">
+          <PageHeader
+            title="관심 목록"
+            description="관심 게임을 추가하고 추적하세요"
+            icon={<Star className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 fill-yellow-500" />}
+            pageName="관심 목록"
+          />
+          <FeatureGuideModal
+            featureKey="watchlist"
+            title="관심 목록 사용 가이드"
+            description="관심 게임을 추적하고 중요한 변화를 놓치지 마세요"
+            steps={watchlistGuideSteps}
+          />
+        </div>
         <Card className="border-amber-500/30 bg-amber-500/5">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <LogIn className="h-12 w-12 text-amber-500/60 mb-4" />
@@ -57,12 +89,20 @@ export default function WatchlistPage() {
   if (error && !isAuthError) {
     return (
       <div className="space-y-6">
-        <PageHeader
-          title="관심 목록"
-          description="관심 게임을 추가하고 추적하세요"
-          icon={<Star className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 fill-yellow-500" />}
-          pageName="관심 목록"
-        />
+        <div className="flex items-center justify-between">
+          <PageHeader
+            title="관심 목록"
+            description="관심 게임을 추가하고 추적하세요"
+            icon={<Star className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 fill-yellow-500" />}
+            pageName="관심 목록"
+          />
+          <FeatureGuideModal
+            featureKey="watchlist"
+            title="관심 목록 사용 가이드"
+            description="관심 게임을 추적하고 중요한 변화를 놓치지 마세요"
+            steps={watchlistGuideSteps}
+          />
+        </div>
         <ErrorState
           type="unknown"
           title="워치리스트를 불러올 수 없습니다"
@@ -77,14 +117,22 @@ export default function WatchlistPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Star className="h-8 w-8 text-yellow-500" />
-            관심 목록
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            관심 게임을 추적하고 알림을 받으세요
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Star className="h-8 w-8 text-yellow-500" />
+              관심 목록
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              관심 게임을 추적하고 알림을 받으세요
+            </p>
+          </div>
+          <FeatureGuideModal
+            featureKey="watchlist"
+            title="관심 목록 사용 가이드"
+            description="관심 게임을 추적하고 중요한 변화를 놓치지 마세요"
+            steps={watchlistGuideSteps}
+          />
         </div>
 
         <div className="grid gap-4">
@@ -119,6 +167,12 @@ export default function WatchlistPage() {
           }
           icon={<Star className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500 fill-yellow-500" />}
           pageName="관심 목록"
+        />
+        <FeatureGuideModal
+          featureKey="watchlist"
+          title="관심 목록 사용 가이드"
+          description="관심 게임을 추적하고 중요한 변화를 놓치지 마세요"
+          steps={watchlistGuideSteps}
         />
       </div>
 
@@ -156,7 +210,7 @@ export default function WatchlistPage() {
                 {/* 게임 정보 */}
                 <div className="flex-1 p-4 flex flex-col justify-between">
                   <div>
-                    <Link 
+                    <Link
                       href={`/game/${item.app_id}`}
                       className="hover:text-primary transition-colors"
                     >
@@ -203,9 +257,9 @@ export default function WatchlistPage() {
                       상세
                     </Button>
                   </Link>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="w-full gap-1 text-red-500 hover:text-red-600 hover:bg-red-500/10"
                     onClick={() => removeFromWatchlist(item.app_id)}
                     disabled={isRemoving}
