@@ -12,15 +12,19 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database, Tables } from '@/types/database';
 import { analyzeStreamingCorrelation } from '@/lib/algorithms/streamingCorrelation';
 
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 type GameDailyMetric = Tables<'game_daily_metrics'>;
+
+// Lazy initialization to avoid build-time env requirement
+function getSupabaseClient() {
+  return createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient();
     const { searchParams } = new URL(request.url);
 
     const steamAppId = searchParams.get('steamAppId');

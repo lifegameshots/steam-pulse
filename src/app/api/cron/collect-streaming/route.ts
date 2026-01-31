@@ -6,20 +6,19 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as twitch from '@/lib/streaming/twitch';
 import * as chzzk from '@/lib/streaming/chzzk';
 import { standardizeGameName } from '@/lib/streaming/gameNameMatcher';
 import type { Database, Json } from '@/types/database';
 
-// Supabase 클라이언트 (서비스 롤)
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-// Cron 인증 키
-const CRON_SECRET = process.env.CRON_SECRET || '';
+// Lazy initialization to avoid build-time env requirement
+function getSupabaseClient() {
+  return createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 interface StreamerData {
   id: string;
@@ -42,6 +41,9 @@ interface GameStreamingData {
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient();
+    const CRON_SECRET = process.env.CRON_SECRET || '';
+
     // Cron 인증 확인
     const authHeader = request.headers.get('authorization');
     if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
@@ -89,7 +91,7 @@ export async function GET(request: NextRequest) {
       // Twitch 데이터 저장
       if (platforms.twitch) {
         insertPromises.push(
-          insertStreamingHistory(platforms.twitch, now)
+          insertStreamingHistory(supabase, platforms.twitch, now)
             .then(() => insertedCount++)
             .catch((e) => {
               console.error(`[Cron] Error inserting Twitch data for ${gameName}:`, e);
@@ -101,7 +103,7 @@ export async function GET(request: NextRequest) {
       // Chzzk 데이터 저장
       if (platforms.chzzk) {
         insertPromises.push(
-          insertStreamingHistory(platforms.chzzk, now)
+          insertStreamingHistory(supabase, platforms.chzzk, now)
             .then(() => insertedCount++)
             .catch((e) => {
               console.error(`[Cron] Error inserting Chzzk data for ${gameName}:`, e);
@@ -121,7 +123,7 @@ export async function GET(request: NextRequest) {
         ].sort((a, b) => b.viewers - a.viewers).slice(0, 10);
 
         insertPromises.push(
-          insertStreamingHistory({
+          insertStreamingHistory(supabase, {
             gameName,
             platform: 'total' as const,
             totalViewers,
@@ -161,7 +163,7 @@ export async function GET(request: NextRequest) {
     }
 
     for (const streamer of uniqueStreamers.values()) {
-      insertPromises.push(upsertStreamer(streamer));
+      insertPromises.push(upsertStreamer(supabase, streamer));
     }
 
     await Promise.all(insertPromises);
@@ -238,6 +240,7 @@ async function collectChzzkData(): Promise<GameStreamingData[]> {
  * streaming_history 테이블에 데이터 삽입
  */
 async function insertStreamingHistory(
+  supabase: SupabaseClient<Database>,
   data: GameStreamingData & { platform: 'twitch' | 'chzzk' | 'total' },
   recordedAt: string
 ): Promise<void> {
@@ -265,7 +268,10 @@ async function insertStreamingHistory(
 /**
  * streamers 테이블에 스트리머 정보 upsert
  */
-async function upsertStreamer(streamer: StreamerData): Promise<void> {
+async function upsertStreamer(
+  supabase: SupabaseClient<Database>,
+  streamer: StreamerData
+): Promise<void> {
   const { error } = await supabase
     .from('streamers')
     .upsert({

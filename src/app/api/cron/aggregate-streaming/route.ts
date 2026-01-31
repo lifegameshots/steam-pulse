@@ -6,23 +6,25 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Tables } from '@/types/database';
-
-// Supabase 클라이언트 (서비스 롤)
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 type StreamingDailyStat = Tables<'streaming_daily_stats'>;
 type GameDailyMetric = Tables<'game_daily_metrics'>;
 
-// Cron 인증 키
-const CRON_SECRET = process.env.CRON_SECRET || '';
+// Lazy initialization to avoid build-time env requirement
+function getSupabaseClient() {
+  return createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabaseClient();
+    const CRON_SECRET = process.env.CRON_SECRET || '';
+
     // Cron 인증 확인
     const authHeader = request.headers.get('authorization');
     if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
@@ -50,13 +52,13 @@ export async function GET(request: NextRequest) {
     }
 
     // 2. game_daily_metrics 테이블 갱신
-    const metricsUpdated = await updateGameDailyMetrics(targetDate);
+    const metricsUpdated = await updateGameDailyMetrics(supabase, targetDate);
 
     // 3. 변화율 계산
-    const changeRatesUpdated = await calculateChangeRates(targetDate);
+    const changeRatesUpdated = await calculateChangeRates(supabase, targetDate);
 
     // 4. 오래된 시간별 데이터 정리 (30일 이상)
-    const cleanedCount = await cleanOldHourlyData();
+    const cleanedCount = await cleanOldHourlyData(supabase);
 
     const elapsed = Date.now() - startTime;
     console.log(`[Cron] Daily aggregation complete: ${elapsed}ms`);
@@ -87,7 +89,10 @@ export async function GET(request: NextRequest) {
  * game_daily_metrics 테이블 갱신
  * 스트리밍 데이터와 Steam CCU/리뷰 데이터를 통합
  */
-async function updateGameDailyMetrics(targetDate: string): Promise<number> {
+async function updateGameDailyMetrics(
+  supabase: SupabaseClient<Database>,
+  targetDate: string
+): Promise<number> {
   try {
     // 해당 날짜의 스트리밍 일별 통계 조회
     const { data: rawStreamingStats, error: statsError } = await supabase
@@ -210,7 +215,10 @@ async function updateGameDailyMetrics(targetDate: string): Promise<number> {
 /**
  * 변화율 계산 (1일, 7일 전 대비)
  */
-async function calculateChangeRates(targetDate: string): Promise<number> {
+async function calculateChangeRates(
+  supabase: SupabaseClient<Database>,
+  targetDate: string
+): Promise<number> {
   try {
     // 어제, 1일전, 7일전 날짜 계산
     const date1dAgo = new Date(targetDate);
@@ -297,7 +305,9 @@ async function calculateChangeRates(targetDate: string): Promise<number> {
 /**
  * 오래된 시간별 데이터 정리 (30일 이상)
  */
-async function cleanOldHourlyData(): Promise<number> {
+async function cleanOldHourlyData(
+  supabase: SupabaseClient<Database>
+): Promise<number> {
   try {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
