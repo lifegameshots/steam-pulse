@@ -54,11 +54,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, data: cached, cached: true });
     }
 
-    // 프로젝트 조회 쿼리
+    // 프로젝트 조회 쿼리 - owner_id로만 조회 (members는 JSON이라 복잡한 쿼리 필요)
     let query = supabase
       .from('projects')
       .select('*', { count: 'exact' })
-      .or(`owner_id.eq.${user.id},members.cs.{${user.id}}`)
+      .eq('owner_id', user.id)
       .order('updated_at', { ascending: false })
       .range((page - 1) * pageSize, page * pageSize - 1);
 
