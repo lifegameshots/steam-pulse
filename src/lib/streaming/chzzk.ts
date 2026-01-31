@@ -131,19 +131,26 @@ async function chzzkAuthFetch<T>(endpoint: string, options?: RequestInit): Promi
  * Chzzk 공개 API 요청 헬퍼 (인증 불필요)
  */
 async function chzzkFetch<T>(endpoint: string): Promise<T> {
-  const response = await fetchWithTimeout(`${CHZZK_API_BASE}${endpoint}`, {
+  const url = `${CHZZK_API_BASE}${endpoint}`;
+  console.log('[Chzzk] Fetching:', url);
+
+  const response = await fetchWithTimeout(url, {
     headers: {
       'Content-Type': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
     },
   });
 
   if (!response.ok) {
+    console.error('[Chzzk] HTTP error:', response.status, response.statusText);
     throw new Error(`Chzzk API error: ${response.status}`);
   }
 
   const data = await response.json();
+  console.log('[Chzzk] Response code:', data.code, 'Has content:', !!data.content);
 
   if (data.code !== 200) {
+    console.error('[Chzzk] API error:', data.message);
     throw new Error(`Chzzk API error: ${data.message}`);
   }
 
@@ -171,6 +178,7 @@ export async function getLivesByCategory(
 
 /**
  * 인기 라이브 목록 조회 (캐싱 적용)
+ * 여러 엔드포인트를 시도하여 데이터를 가져옴
  */
 export async function getPopularLives(options?: { size?: number }): Promise<ChzzkLive[]> {
   const size = options?.size || 20;
@@ -179,15 +187,34 @@ export async function getPopularLives(options?: { size?: number }): Promise<Chzz
   return getOrSet(
     cacheKey,
     async () => {
-      try {
-        const data = await chzzkFetch<{ data: ChzzkLive[] }>(
-          `/service/v1/lives/popular?size=${size}`
-        );
-        return data.data || [];
-      } catch (error) {
-        console.error('Failed to get popular Chzzk lives:', error);
-        return [];
+      // 시도할 엔드포인트 목록
+      const endpoints = [
+        `/service/v1/lives?size=${size}&sortType=POPULAR`,
+        `/service/v2/lives?size=${size}&sortType=POPULAR`,
+        `/service/v1/home/lives?size=${size}`,
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          console.log('[Chzzk] Trying endpoint:', endpoint);
+          const data = await chzzkFetch<{ data?: ChzzkLive[]; lives?: ChzzkLive[] }>(endpoint);
+
+          // 응답 구조가 다를 수 있으므로 여러 키 시도
+          const lives = data.data || data.lives || (Array.isArray(data) ? data : []);
+
+          if (lives.length > 0) {
+            console.log('[Chzzk] Got', lives.length, 'lives from', endpoint);
+            return lives;
+          }
+        } catch (error) {
+          console.error('[Chzzk] Failed endpoint', endpoint, ':', error);
+          // 다음 엔드포인트 시도
+          continue;
+        }
       }
+
+      console.warn('[Chzzk] All endpoints failed, returning empty array');
+      return [];
     },
     CACHE_TTL.STREAMING_TOP_GAMES
   );
@@ -404,24 +431,33 @@ export async function getTopGameStreams(): Promise<Array<{
     cacheKey,
     async () => {
       try {
+        console.log('[Chzzk] Getting top game streams...');
         const lives = await getPopularLives({ size: 100 });
+        console.log('[Chzzk] Got', lives.length, 'lives for top games');
+
+        if (lives.length === 0) {
+          console.warn('[Chzzk] No lives data available');
+          return [];
+        }
 
         // 카테고리별 집계
         const categoryMap = new Map<string, { name: string; viewers: number; count: number }>();
 
         lives.forEach(live => {
-          const categoryId = live.liveCategory;
-          const categoryName = live.liveCategoryValue || live.liveCategory;
+          // 다양한 필드명 시도 (API 버전에 따라 다를 수 있음)
+          const categoryId = live.liveCategory || live.categoryId || live.gameId;
+          const categoryName = live.liveCategoryValue || live.categoryValue || live.gameName || categoryId || 'Unknown';
+          const viewers = live.concurrentUserCount || live.viewerCount || live.viewers || 0;
 
           if (categoryId) {
             const existing = categoryMap.get(categoryId) || { name: categoryName, viewers: 0, count: 0 };
-            existing.viewers += live.concurrentUserCount;
+            existing.viewers += viewers;
             existing.count += 1;
             categoryMap.set(categoryId, existing);
           }
         });
 
-        return Array.from(categoryMap.entries())
+        const result = Array.from(categoryMap.entries())
           .map(([categoryId, data]) => ({
             categoryId,
             categoryName: data.name,
@@ -429,8 +465,11 @@ export async function getTopGameStreams(): Promise<Array<{
             streamCount: data.count,
           }))
           .sort((a, b) => b.viewerCount - a.viewerCount);
+
+        console.log('[Chzzk] Aggregated', result.length, 'categories');
+        return result;
       } catch (error) {
-        console.error('Failed to get top Chzzk game streams:', error);
+        console.error('[Chzzk] Failed to get top game streams:', error);
         return [];
       }
     },

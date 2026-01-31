@@ -130,6 +130,8 @@ export async function getDashboardData(): Promise<StreamingDashboardData> {
       };
 
       try {
+        console.log('[Streaming] Fetching dashboard data...');
+
         // 병렬로 Twitch, Chzzk 데이터 조회 (개별 API에 이미 캐싱 적용됨)
         const [twitchTop, chzzkTop] = await withTimeout(
           Promise.all([
@@ -139,6 +141,8 @@ export async function getDashboardData(): Promise<StreamingDashboardData> {
           DASHBOARD_TIMEOUT,
           [[], []] // 타임아웃 시 빈 배열
         );
+
+        console.log('[Streaming] Twitch games:', twitchTop.length, ', Chzzk games:', chzzkTop.length);
 
         // 플랫폼별 총계
         let twitchTotalViewers = 0;
